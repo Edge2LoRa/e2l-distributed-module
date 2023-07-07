@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.edge2lorarpc";
+option java_outer_classname = "Edge2LoRaRPCProto";
+option objc_class_prefix = "E2L";
+
+package edge2lorarpcservice;
+
+service Edge2LoraRPCService {
+    rpc new_data (NewDataRequest) returns (NewDataResponse);
+}
+
+message NewDataRequest {
+   string name = 1;
+}
+
+message NewDataResponse {
+    string message = 1;
+}

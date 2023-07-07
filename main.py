@@ -1,8 +1,14 @@
 import os
 import logging
+from concurrent import futures
+
+import grpc
+from rpc_module import rpc_server_pb2_grpc
+
+
 from mqtt_module import MQTTModule
-from rpc_module import RPCModuleService
-from rpyc.utils.server import ThreadedServer
+from rpc_module import Edge2LoraRpcService
+# from rpyc.utils.server import ThreadedServer
 import json
 import base64
 
@@ -40,8 +46,8 @@ def check_env_vars():
     return True
 
 def subscribe_callback(client, userdata, message):
-    return None
     log.debug(f"Received message from topic: {message.topic}")
+    return None
     payload_str = message.payload.decode('utf-8')
     payload = json.loads(payload_str)
     log.debug(f"Payload keys: {list(payload.keys())}")
@@ -68,15 +74,21 @@ if __name__ == '__main__':
     log.info('Starting...')
     check_env_vars()
 
-    rpc_service = RPCModuleService()
-    rpc_service.register_function(edge_callback)
+    # rpc_service = RPCModuleService()
+    # rpc_service.register_function(edge_callback)
 
-    log.debug('Starting RPC server...')
-    server = ThreadedServer(
-        rpc_service,
-        port=18861,
-        protocol_config = {"allow_public_attrs" : True}
-    )
+    # log.debug('Starting RPC server...')
+    # server = ThreadedServer(
+    #     rpc_service,
+    #     port=18861,
+    #     protocol_config = {"allow_public_attrs" : True}
+    # )
+    # server.start()
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    rpc_server_pb2_grpc.add_Edge2LoraRPCServiceServicer_to_server(
+        Edge2LoraRpcService(), server
+        )
+    server.add_insecure_port('[::]:50051')
     server.start()
     log.info('Started RPC server')
 
