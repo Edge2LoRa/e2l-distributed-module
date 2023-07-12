@@ -13,6 +13,7 @@ service Edge2LoraRPCService {
 
 message NewDataRequest {
    string name = 1;
+   uint64 timetag = 2;
 }
 
 message NewDataResponse {

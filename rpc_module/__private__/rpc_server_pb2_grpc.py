@@ -14,6 +14,7 @@ class Edge2LoraRPCServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+
         self.new_data = channel.unary_unary(
                 '/edge2lorarpcservice.Edge2LoraRPCService/new_data',
                 request_serializer=rpc__server__pb2.NewDataRequest.SerializeToString,
@@ -23,6 +24,10 @@ class Edge2LoraRPCServiceStub(object):
 
 class Edge2LoraRPCServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
+
+    def __init__(self) -> None:
+        self.delta_time_array = []
+        self.delta_array_len_limit = 3
 
     def new_data(self, request, context):
         """Missing associated documentation comment in .proto file."""

@@ -74,16 +74,6 @@ if __name__ == '__main__':
     log.info('Starting...')
     check_env_vars()
 
-    # rpc_service = RPCModuleService()
-    # rpc_service.register_function(edge_callback)
-
-    # log.debug('Starting RPC server...')
-    # server = ThreadedServer(
-    #     rpc_service,
-    #     port=18861,
-    #     protocol_config = {"allow_public_attrs" : True}
-    # )
-    # server.start()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     rpc_server_pb2_grpc.add_Edge2LoraRPCServiceServicer_to_server(
         Edge2LoraRpcService(), server
