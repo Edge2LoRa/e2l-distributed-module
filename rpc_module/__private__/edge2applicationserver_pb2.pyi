@@ -9,16 +9,16 @@ class ResponseMessage(_message.Message):
     STATUS_CODE_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
     status_code: int
-    message: str
-    def __init__(self, status_code: _Optional[int] = ..., message: _Optional[str] = ...) -> None: ...
+    message: bytes
+    def __init__(self, status_code: _Optional[int] = ..., message: _Optional[bytes] = ...) -> None: ...
 
 class e2gw_pub_info(_message.Message):
     __slots__ = ["gw_ip_addr", "e2gw_pub_key"]
     GW_IP_ADDR_FIELD_NUMBER: _ClassVar[int]
     E2GW_PUB_KEY_FIELD_NUMBER: _ClassVar[int]
     gw_ip_addr: str
-    e2gw_pub_key: str
-    def __init__(self, gw_ip_addr: _Optional[str] = ..., e2gw_pub_key: _Optional[str] = ...) -> None: ...
+    e2gw_pub_key: bytes
+    def __init__(self, gw_ip_addr: _Optional[str] = ..., e2gw_pub_key: _Optional[bytes] = ...) -> None: ...
 
 class NewDataRequest(_message.Message):
     __slots__ = ["name", "timetag"]

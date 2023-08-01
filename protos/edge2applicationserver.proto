@@ -15,12 +15,12 @@ service Edge2ApplicationServer {
 
 message ResponseMessage {
     sint32 status_code = 1;
-    string message = 2;
+    bytes message = 2;
 }
 
 message e2gw_pub_info {
     string gw_ip_addr = 1;
-    string e2gw_pub_key = 2;
+    bytes e2gw_pub_key = 2;
 }
 
 message NewDataRequest {
