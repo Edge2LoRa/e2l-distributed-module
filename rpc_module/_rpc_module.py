@@ -23,7 +23,11 @@ class Edge2LoRaApplicationServer(edge2applicationserver_pb2_grpc.Edge2Applicatio
         self.data_received_callback = callback
 
     def store_e2gw_pub_info(self, request, context):
-        ip_address = request.gw_ip_addr
+        gw_rpc_endpoint_address = request.gw_ip_addr
+        gw_rpc_endpoint_port = request.gw_port
+        print("GW_RPC_ENDPOINT_ADDRESS: ", gw_rpc_endpoint_address)
+        print("GW_RPC_ENDPOINT_PORT: ", gw_rpc_endpoint_port)
+
         gw_pub_key_bytes = request.e2gw_pub_key
         gw_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), gw_pub_key_bytes)
 
@@ -37,7 +41,7 @@ class Edge2LoRaApplicationServer(edge2applicationserver_pb2_grpc.Edge2Applicatio
         print("G_AS_GW: ", list(g_as_gw))
 
 
-        self.e2gw_active_directory[ip_address] = {
+        self.e2gw_active_directory[gw_rpc_endpoint_address] = {
             "ephimeral_gw_pub_key": gw_pub_key,
             "ephimaral_server_key" : {
                 "private": ephimeral_private_key,

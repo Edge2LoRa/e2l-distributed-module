@@ -20,7 +20,8 @@ message ResponseMessage {
 
 message e2gw_pub_info {
     string gw_ip_addr = 1;
-    bytes e2gw_pub_key = 2;
+    string gw_port = 2;
+    bytes e2gw_pub_key = 3;
 }
 
 message NewDataRequest {
