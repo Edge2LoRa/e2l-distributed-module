@@ -3,12 +3,11 @@ import logging
 from concurrent import futures
 
 import grpc
-from rpc_module import rpc_server_pb2_grpc
+from rpc_module import edge2applicationserver_pb2_grpc
+from rpc_module import Edge2LoRaApplicationServer
 
 
 from mqtt_module import MQTTModule
-from rpc_module import Edge2LoraRpcService
-# from rpyc.utils.server import ThreadedServer
 import json
 import base64
 
@@ -75,8 +74,8 @@ if __name__ == '__main__':
     check_env_vars()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    rpc_server_pb2_grpc.add_Edge2LoraRPCServiceServicer_to_server(
-        Edge2LoraRpcService(), server
+    edge2applicationserver_pb2_grpc.add_Edge2ApplicationServerServicer_to_server(
+        Edge2LoRaApplicationServer(), server
         )
     server.add_insecure_port('[::]:50051')
     server.start()

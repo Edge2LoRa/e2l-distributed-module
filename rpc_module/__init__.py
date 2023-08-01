@@ -1,2 +1,3 @@
-from ._rpc_module import Edge2LoraRpcService
-from .__private__ import rpc_server_pb2_grpc
+from ._rpc_module import Edge2LoRaApplicationServer
+from .__private__ import edge2applicationserver_pb2_grpc
+
