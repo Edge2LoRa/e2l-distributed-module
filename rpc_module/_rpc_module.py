@@ -11,7 +11,6 @@ class Edge2LoRaApplicationServer(edge2applicationserver_pb2_grpc.Edge2Applicatio
         super().__init__()
         self.e2gw_active_directory = {}
 
-
     def register_function(self, callback):
         self.data_received_callback = callback
 
@@ -35,27 +34,8 @@ class Edge2LoRaApplicationServer(edge2applicationserver_pb2_grpc.Edge2Applicatio
 
         delta = now - timetag
 
-
-        self.delta_time_array.append(delta)
+        # self.delta_time_array.append(delta)
         with open("output_files/e2lora_delta_data.txt", "a") as f:
-            f.write(str(delta) + ", ")
+            f.write(f'{delta}\n')
 
-        if (len(self.delta_time_array) >= self.delta_array_len_limit):
-            print("WRITING TO FILE")
-            with open("output_files/e2lora_delta_avg.txt", "a") as f:
-                f.write("- [ ")
-                sum = 0
-                for elem in self.delta_time_array:
-                    f.write(str(elem) + ", ")
-                    sum += elem
-                f.write("]\n")
-                avg = sum / len(self.delta_time_array)
-                f.write(f'AVG: {str(avg)} \n')
-
-            self.delta_time_array = []
-        print(data)
-        print(timetag)
-        print(now)
-        print(delta)
-
-        return NewDataResponse(message = "OK")
+        return NewDataResponse(message="OK")
