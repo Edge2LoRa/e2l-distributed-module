@@ -9,10 +9,6 @@ from rpc_module.__private__.edge2applicationserver_pb2 import ResponseMessage
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-ecc_curve = os.environ.get("ECC_CURVE")
-if ecc_curve is None:
-    ecc_curve = "p256"
-
 class Edge2LoRaApplicationServer(edge2applicationserver_pb2_grpc.Edge2ApplicationServerServicer):
 
     def __init__(self) -> None:
