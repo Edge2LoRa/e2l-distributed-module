@@ -10,11 +10,11 @@ class EdPubInfo(_message.Message):
     DEV_ADDR_FIELD_NUMBER: _ClassVar[int]
     G_AS_ED_FIELD_NUMBER: _ClassVar[int]
     DEV_PUBLIC_KEY_FIELD_NUMBER: _ClassVar[int]
-    dev_eui: bytes
-    dev_addr: bytes
+    dev_eui: str
+    dev_addr: str
     g_as_ed: bytes
     dev_public_key: bytes
-    def __init__(self, dev_eui: _Optional[bytes] = ..., dev_addr: _Optional[bytes] = ..., g_as_ed: _Optional[bytes] = ..., dev_public_key: _Optional[bytes] = ...) -> None: ...
+    def __init__(self, dev_eui: _Optional[str] = ..., dev_addr: _Optional[str] = ..., g_as_ed: _Optional[bytes] = ..., dev_public_key: _Optional[bytes] = ...) -> None: ...
 
 class GwInfo(_message.Message):
     __slots__ = ["status_code", "g_gw_ed"]
