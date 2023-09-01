@@ -75,18 +75,23 @@ def subscribe_callback(client, userdata, message):
     dev_addr = end_devices_infos.get('dev_addr')
     uplink_message = payload.get('uplink_message')
     frame_payload = uplink_message.get('frm_payload')
+    ret = 0
     if up_port == DEFAULT_APP_PORT:
         log.debug("Recveived Legacy Frame")
         # legacy_callback(payload)
     elif up_port == DEFAULT_E2L_JOIN_PORT:
         log.debug("Received Edge Join Frame")
-        client.e2l_module.handle_edge_join_request(dev_eui, dev_addr,frame_payload)
+        ret = client.e2l_module.handle_edge_join_request(dev_eui, dev_addr,frame_payload)
     elif up_port == DEFAULT_E2L_APP_PORT:
         log.debug("Received Edge Frame")
-        edge_callback(payload)
+        ret = client.e2l_module.handle_edge_data_from_legacy(dev_eui, dev_addr, frame_payload)
     else:
         log.warning(f"Unknown frame port: {up_port}")
-    return None
+    
+    if ret < 0 :
+        log.error(f"Error handling frame: {ret}")
+
+    return ret
 
 def edge_callback(data):
     log.debug(f"Received data: {data}")
