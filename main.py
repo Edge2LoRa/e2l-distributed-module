@@ -41,7 +41,7 @@ DEFAULT_E2L_APP_PORT=4
 def check_env_vars() -> bool:
     env_vars = [
         'MQTT_USERNAME', 'MQTT_PASSWORD', 'MQTT_HOST', 'MQTT_PORT',
-        'MQTT_TOPIC'
+        'MQTT_TOPIC', 'MQTT_BASE_TOPIC'
     ]
     for var in env_vars:
         if os.getenv(var) is None:
@@ -81,7 +81,11 @@ def subscribe_callback(client, userdata, message):
         # legacy_callback(payload)
     elif up_port == DEFAULT_E2L_JOIN_PORT:
         log.debug("Received Edge Join Frame")
-        ret = client.e2l_module.handle_edge_join_request(dev_eui, dev_addr,frame_payload)
+        ret = client.e2l_module.handle_edge_join_request(
+            dev_eui = dev_eui,
+            dev_addr = dev_addr,
+            dev_pub_key_compressed_base_64 = frame_payload, 
+            mqqt_client = client)
     elif up_port == DEFAULT_E2L_APP_PORT:
         log.debug("Received Edge Frame")
         ret = client.e2l_module.handle_edge_data_from_legacy(dev_eui, dev_addr, frame_payload)

@@ -33,6 +33,30 @@ class E2LoRaModule():
         }
 
     """
+        @brief: This function is used to send a downlink frame to a ED.
+        @para
+    """
+    def _send_downlink_frame(self, mqtt_client, base64_message, dev_eui, priority = "HIGHEST"):
+        downlink_frame = {
+            "downlinks": [
+                {
+                    "f_port": 3,
+                    "frm_payload": base64_message,
+                    "priority": priority
+                }
+            ]
+        }
+
+        base_topic = os.getenv('MQTT_BASE_TOPIC')
+        topic = f'{base_topic}/{dev_eui}/down/push'
+        log.info(f'Send downlink frame to {topic}')
+        mqtt_client.publish_to_topic(
+            topic = topic,
+            message = downlink_frame
+        )
+
+        return downlink_frame
+    """
         @brief  This funciont handle new public key info received by a GW.
                 It initialize a RPC client for each GW.
         @param gw_rpc_endpoint_address: The IP address of the Gateway.
@@ -62,7 +86,6 @@ class E2LoRaModule():
         log.info(f'E2GW {gw_rpc_endpoint_address} is added to active directory')
         return 0
 
-
     """
         @brief  This funciont handle new public key info received by a ED.
                 It complete the process of key agreement for the server.
@@ -73,7 +96,7 @@ class E2LoRaModule():
         @error code:
             -1: Error 
     """
-    def handle_edge_join_request(self, dev_eui, dev_addr, dev_pub_key_compressed_base_64):
+    def handle_edge_join_request(self, dev_eui, dev_addr, dev_pub_key_compressed_base_64, mqtt_client):
         log.info(f'Dev EUI: {dev_eui}')
         log.info(f'Dev Addr: {dev_addr}')
         log.info(f'Dev pub key base64: {dev_pub_key_compressed_base_64}')
@@ -93,6 +116,13 @@ class E2LoRaModule():
         # Get g_as_gw
         g_as_gw = e2gw.get("g_as_gw")
         # Schedule downlink to ed with g_as_gw
+        # encode g_as_gw in base64
+        g_as_gw_base_64 = base64.b64encode(g_as_gw)
+        downlink_frame = self._send_downlink_frame(
+            mqtt_client=mqtt_client
+            base64_message = g_as_gw_base_64, 
+            dev_eui = dev_eui
+            )
 
         # Generate g_as_ed
         # Decode base64

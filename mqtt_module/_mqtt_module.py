@@ -25,6 +25,9 @@ class MQTTModule():
         # e2l Module
         self.e2l_module = e2l_module
 
+    def _callback(self, client, userdata, message):
+        self.callback(self, userdata, message)
+
     def enable_logger(self, enable = True):
         if enable:
             self.client.enable_logger(logging.getLogger(__name__))
@@ -39,5 +42,8 @@ class MQTTModule():
     def wait_for_message(self):
         self.client.loop_forever()
 
-    def _callback(self, client, userdata, message):
-        self.callback(self, userdata, message)
+    def publish_to_topic(self, topic, message):
+        self.client.publish(
+            topic=topic, 
+            payload=message
+            )
