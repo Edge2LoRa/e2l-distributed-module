@@ -119,7 +119,7 @@ class E2LoRaModule():
         # encode g_as_gw in base64
         g_as_gw_base_64 = base64.b64encode(g_as_gw)
         downlink_frame = self._send_downlink_frame(
-            mqtt_client=mqtt_client
+            mqtt_client=mqtt_client,
             base64_message = g_as_gw_base_64, 
             dev_eui = dev_eui
             )
