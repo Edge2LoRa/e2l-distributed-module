@@ -85,7 +85,7 @@ def subscribe_callback(client, userdata, message):
             dev_eui = dev_eui,
             dev_addr = dev_addr,
             dev_pub_key_compressed_base_64 = frame_payload, 
-            mqqt_client = client)
+            mqtt_client = client)
     elif up_port == DEFAULT_E2L_APP_PORT:
         log.debug("Received Edge Frame")
         ret = client.e2l_module.handle_edge_data_from_legacy(dev_eui, dev_addr, frame_payload)

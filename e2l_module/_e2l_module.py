@@ -49,10 +49,10 @@ class E2LoRaModule():
 
         base_topic = os.getenv('MQTT_BASE_TOPIC')
         topic = f'{base_topic}/{dev_eui}/down/push'
-        log.info(f'Send downlink frame to {topic}')
+        log.info(f'Send downlink frame to {dev_eui}')
         mqtt_client.publish_to_topic(
             topic = topic,
-            message = downlink_frame
+            message = str(downlink_frame)
         )
 
         return downlink_frame
@@ -70,6 +70,7 @@ class E2LoRaModule():
         # Retireve Info
         gw_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), gw_pub_key_compressed)
         g_as_gw = self.ephimeral_private_key.exchange(ec.ECDH(), gw_pub_key)
+
         # Init RPC Client
         channel = grpc.insecure_channel(f'{gw_rpc_endpoint_address}:{gw_rpc_endpoint_port}')
         stub = edge2gateway_pb2_grpc.Edge2GatewayStub(channel)
@@ -97,9 +98,6 @@ class E2LoRaModule():
             -1: Error 
     """
     def handle_edge_join_request(self, dev_eui, dev_addr, dev_pub_key_compressed_base_64, mqtt_client):
-        log.info(f'Dev EUI: {dev_eui}')
-        log.info(f'Dev Addr: {dev_addr}')
-        log.info(f'Dev pub key base64: {dev_pub_key_compressed_base_64}')
 
         # Assign E2GW to E2ED and store informations
         e2gw = self.active_directory["e2gws"].get(list(self.active_directory["e2gws"].keys())[0])
@@ -127,7 +125,6 @@ class E2LoRaModule():
         # Generate g_as_ed
         # Decode base64
         dev_pub_key_compressed = base64.b64decode(dev_pub_key_compressed_base_64)
-        log.info(f'Dev pub key: {dev_pub_key_compressed}\t type: {type(dev_pub_key_compressed)}')
         dev_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), dev_pub_key_compressed)
         g_as_ed = self.ephimeral_private_key.exchange(ec.ECDH(), dev_pub_key)
         # g_as_ed_compressed = g_as_ed.public_bytes(encoding = Encoding.X962, format = PublicFormat.CompressedPoint)
@@ -136,14 +133,20 @@ class E2LoRaModule():
         e2gw_rpc_stub = e2gw.get("e2gw_stub")
         ed_pub_info = EdPubInfo(dev_eui=dev_eui, dev_addr=dev_addr, g_as_ed=g_as_ed, dev_public_key = dev_pub_key_compressed)
         response = e2gw_rpc_stub.handle_ed_pub_info(ed_pub_info)
-        g_gw_ed = response.g_gw_ed
+        g_gw_ed_secret = response.g_gw_ed
+        g_private_int = int.from_bytes(g_gw_ed_secret, byteorder='big')
+        g_private_key = ec.derive_private_key(g_private_int, ec.SECP256R1())
+        g_gw_ed = g_private_key.public_key()
         edgeSKey = self.ephimeral_private_key.exchange(ec.ECDH(), g_gw_ed)
-        log.info(f'edgeSKey: {edgeSKey}')
+        log.info(f'edgeSKey: {[x for x in edgeSKey]}')
         # Hash edgeSKey
-        # edgeSIntKey = hashlib.sha256(edgeSKey).hexdigest()
-        # edgeSEncKey = hashlib.sha256(edgeSKey).hexdigest()
+        import hashlib
+        edgeSIntKey = hashlib.sha256(b'\x00' + edgeSKey).digest()[:16]
+        edgeSEncKey = hashlib.sha256(b'\x01' + edgeSKey).digest()[:16]
+        log.info(f'edgeSIntKey: {[x for x in edgeSIntKey]}')
+        log.info(f'edgeSEncKey: {[x for x in edgeSEncKey]}')
 
         return 0
-    
+     
     def handle_edge_data_from_legacy(self):
         return 0
