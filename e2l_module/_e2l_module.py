@@ -2,6 +2,7 @@ import os
 import base64
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from Crypto.PublicKey import ECC
 import logging
 import grpc
 from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo, GwInfo
@@ -23,9 +24,13 @@ class E2LoRaModule():
     """
     def __init__(self):
         # Generate ephimeral ecc private/public key pair
-        self.ephimeral_private_key = ec.generate_private_key(ec.SECP256R1())
+        self.ephimeral_private_key = ECC.generate(curve='P-256')
         self.ephimeral_public_key = self.ephimeral_private_key.public_key()
-        self.ephimeral_public_key_bytes_compressed = self.ephimeral_public_key.public_bytes(encoding = Encoding.X962, format = PublicFormat.UncompressedPoint )
+        self.ephimeral_public_key_bytes_compressed = self.ephimeral_public_key.export_key(format='SEC1')
+        log.info(f'ephimeral public key: {self.ephimeral_public_key_bytes_compressed}')
+        # self.ephimeral_private_key = ec.generate_private_key(ec.SECP256R1())
+        # self.ephimeral_public_key = self.ephimeral_private_key.public_key()
+        # self.ephimeral_public_key_bytes_compressed = self.ephimeral_public_key.public_bytes(encoding = Encoding.X962, format = PublicFormat.UncompressedPoint )
         # Init active directory
         self.active_directory = {
             "e2gws": {},
@@ -68,8 +73,11 @@ class E2LoRaModule():
     """
     def handle_gw_pub_info(self, gw_rpc_endpoint_address, gw_rpc_endpoint_port, gw_pub_key_compressed):
         # Retireve Info
-        gw_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), gw_pub_key_compressed)
-        g_as_gw = self.ephimeral_private_key.exchange(ec.ECDH(), gw_pub_key)
+        # gw_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), gw_pub_key_compressed)
+        # g_as_gw = self.ephimeral_private_key.exchange(ec.ECDH(), gw_pub_key)
+        gw_pub_key = ECC.import_key(gw_pub_key_compressed, curve_name='P-256')
+        g_as_gw = gw_pub_key.pointQ * self.ephimeral_private_key.d
+        log.info(f'g_as_gw: ({g_as_gw.x}, {g_as_gw.y})')
 
         # Init RPC Client
         channel = grpc.insecure_channel(f'{gw_rpc_endpoint_address}:{gw_rpc_endpoint_port}')
