@@ -1,13 +1,9 @@
 import os
 import base64
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from Crypto.PublicKey import ECC
 import logging
 import grpc
 from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo, GwInfo
-
-
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -28,9 +24,6 @@ class E2LoRaModule():
         self.ephimeral_public_key = self.ephimeral_private_key.public_key()
         self.ephimeral_public_key_bytes_compressed = self.ephimeral_public_key.export_key(format='SEC1')
         log.info(f'ephimeral public key: {self.ephimeral_public_key_bytes_compressed}')
-        # self.ephimeral_private_key = ec.generate_private_key(ec.SECP256R1())
-        # self.ephimeral_public_key = self.ephimeral_private_key.public_key()
-        # self.ephimeral_public_key_bytes_compressed = self.ephimeral_public_key.public_bytes(encoding = Encoding.X962, format = PublicFormat.UncompressedPoint )
         # Init active directory
         self.active_directory = {
             "e2gws": {},
@@ -73,11 +66,9 @@ class E2LoRaModule():
     """
     def handle_gw_pub_info(self, gw_rpc_endpoint_address, gw_rpc_endpoint_port, gw_pub_key_compressed):
         # Retireve Info
-        # gw_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), gw_pub_key_compressed)
-        # g_as_gw = self.ephimeral_private_key.exchange(ec.ECDH(), gw_pub_key)
         gw_pub_key = ECC.import_key(gw_pub_key_compressed, curve_name='P-256')
-        g_as_gw = gw_pub_key.pointQ * self.ephimeral_private_key.d
-        log.info(f'g_as_gw: ({g_as_gw.x}, {g_as_gw.y})')
+        g_as_gw_point = gw_pub_key.pointQ * self.ephimeral_private_key.d
+        g_as_gw = ECC.construct(curve='P-256', point_x=g_as_gw_point.x, point_y=g_as_gw_point.y)
 
         # Init RPC Client
         channel = grpc.insecure_channel(f'{gw_rpc_endpoint_address}:{gw_rpc_endpoint_port}')
@@ -90,8 +81,6 @@ class E2LoRaModule():
             "g_as_gw": g_as_gw,
             "e2gw_stub": stub
         }
-        # ed_pub_info = EdPubInfo(dev_eui="dev_eui", dev_addr="dev_addr", g_as_ed=b'g_as_ed', dev_public_key = b'dev_pub_key_compressed')
-        # response = stub.handle_ed_pub_info(ed_pub_info)
         log.info(f'E2GW {gw_rpc_endpoint_address} is added to active directory')
         return 0
 
@@ -123,8 +112,8 @@ class E2LoRaModule():
         g_as_gw = e2gw.get("g_as_gw")
         # Schedule downlink to ed with g_as_gw
         # encode g_as_gw in base64
-        g_as_gw_base_64 = base64.b64encode(g_as_gw)
-        downlink_frame = self._send_downlink_frame(
+        g_as_gw_base_64 = base64.b64encode(g_as_gw.export_key(format="SEC1"))
+        _downlink_frame = self._send_downlink_frame(
             mqtt_client=mqtt_client,
             base64_message = g_as_gw_base_64, 
             dev_eui = dev_eui
@@ -133,26 +122,27 @@ class E2LoRaModule():
         # Generate g_as_ed
         # Decode base64
         dev_pub_key_compressed = base64.b64decode(dev_pub_key_compressed_base_64)
-        dev_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), dev_pub_key_compressed)
-        g_as_ed = self.ephimeral_private_key.exchange(ec.ECDH(), dev_pub_key)
-        # g_as_ed_compressed = g_as_ed.public_bytes(encoding = Encoding.X962, format = PublicFormat.CompressedPoint)
+        log.info(f'dev_pub_key_compressed: {dev_pub_key_compressed}\ttype: {type(dev_pub_key_compressed)}')
+        dev_pub_key = ECC.import_key(dev_pub_key_compressed, curve_name='P-256')
+        g_as_ed = dev_pub_key.pointQ * self.ephimeral_private_key.d
+        g_as_ed_bytes = ECC.construct(curve='P-256', point_x=g_as_ed.x, point_y=g_as_ed.y).export_key(format="SEC1")
         
         ### Send g_as_ed to e2gw
         e2gw_rpc_stub = e2gw.get("e2gw_stub")
-        ed_pub_info = EdPubInfo(dev_eui=dev_eui, dev_addr=dev_addr, g_as_ed=g_as_ed, dev_public_key = dev_pub_key_compressed)
+        ed_pub_info = EdPubInfo(dev_eui=dev_eui, dev_addr=dev_addr, g_as_ed=g_as_ed_bytes, dev_public_key = dev_pub_key_compressed)
         response = e2gw_rpc_stub.handle_ed_pub_info(ed_pub_info)
-        g_gw_ed_secret = response.g_gw_ed
-        g_private_int = int.from_bytes(g_gw_ed_secret, byteorder='big')
-        g_private_key = ec.derive_private_key(g_private_int, ec.SECP256R1())
-        g_gw_ed = g_private_key.public_key()
-        edgeSKey = self.ephimeral_private_key.exchange(ec.ECDH(), g_gw_ed)
-        log.info(f'edgeSKey: {[x for x in edgeSKey]}')
+        g_gw_ed_bytes = response.g_gw_ed
+        g_gw_ed = ECC.import_key(g_gw_ed_bytes, curve_name='P-256')
+        edgeSKey = self.ephimeral_private_key.d * g_gw_ed.pointQ
+        edgeSKey_bytes = ECC.construct(curve='P-256', point_x=edgeSKey.x, point_y=edgeSKey.y).export_key(format="SEC1")
+
+        log.info(f'edgeSKey: {[x for x in edgeSKey_bytes]}')
         # Hash edgeSKey
-        import hashlib
-        edgeSIntKey = hashlib.sha256(b'\x00' + edgeSKey).digest()[:16]
-        edgeSEncKey = hashlib.sha256(b'\x01' + edgeSKey).digest()[:16]
-        log.info(f'edgeSIntKey: {[x for x in edgeSIntKey]}')
-        log.info(f'edgeSEncKey: {[x for x in edgeSEncKey]}')
+        # import hashlib
+        # edgeSIntKey = hashlib.sha256(b'\x00' + edgeSKey_bytes).digest()[:16]
+        # edgeSEncKey = hashlib.sha256(b'\x01' + edgeSKey_bytes).digest()[:16]
+        # log.info(f'edgeSIntKey: {[x for x in edgeSIntKey]}')
+        # log.info(f'edgeSEncKey: {[x for x in edgeSEncKey]}')
 
         return 0
      
