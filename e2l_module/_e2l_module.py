@@ -5,6 +5,7 @@ import logging
 import grpc
 from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo, GwInfo
 import json
+import hashlib
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -51,12 +52,10 @@ class E2LoRaModule():
         base_topic = os.getenv('MQTT_BASE_TOPIC')
         topic = f'{base_topic}{dev_id}/down/replace'
         
-        log.info(f'Send downlink frame to {dev_id}.\tTOPIC: {topic}')
         res = mqtt_client.publish_to_topic(
             topic = topic,
             message = downlink_frame_str
         )
-        log.info(res)
 
         return downlink_frame
     """
@@ -113,13 +112,11 @@ class E2LoRaModule():
             "dev_addr": dev_addr,
             "e2gw": e2gw.get("gw_rpc_endpoint_address"),
         }
-        self.active_directory["e2eds"][dev_eui] = dev_obj
         # Get g_as_gw
         g_as_gw = e2gw.get("g_as_gw")
         # Schedule downlink to ed with g_as_gw
         # encode g_as_gw in base64
         g_as_gw_exported = g_as_gw.export_key(format="SEC1")
-        log.info(f'g_as_gw: {[x for x in g_as_gw_exported]}')
         g_as_gw_base_64 = base64.b64encode(g_as_gw_exported).decode('utf-8')
         _downlink_frame = self._send_downlink_frame(
             mqtt_client=mqtt_client,
@@ -143,11 +140,18 @@ class E2LoRaModule():
         edgeSKey_int = self.ephimeral_private_key.d * g_gw_ed.pointQ
         edgeSKey = edgeSKey_int.x.to_bytes()
 
-        log.info(f'edgeSKey: {[x for x in edgeSKey]}')
         # Hash edgeSKey
-        # import hashlib
-        # edgeSIntKey = hashlib.sha256(b'\x00' + edgeSKey_bytes).digest()[:16]
-        # edgeSEncKey = hashlib.sha256(b'\x01' + edgeSKey_bytes).digest()[:16]
+        edgeSIntKey = b'\x00' + edgeSKey
+        edgeSEncKey = b'\x01' + edgeSKey
+        edgeSIntKey = hashlib.sha256(edgeSIntKey).digest()[:16]
+        edgeSEncKey = hashlib.sha256(edgeSEncKey).digest()[:16]
+        log.info(f'edgeSIntKey: {[x for x in edgeSIntKey]}')
+        log.info(f'edgeSEncKey: {[x for x in edgeSEncKey]}')
+
+        # Store device info
+        dev_obj["edgeSIntKey"] = edgeSIntKey
+        dev_obj["edgeSEncKey"] = edgeSEncKey
+        self.active_directory["e2eds"][dev_eui] = dev_obj
 
         return 0
      
