@@ -5,7 +5,6 @@ import logging
 from dateutil.parser import isoparse
 from concurrent import futures
 
-
 import grpc
 from rpc_module import edge2applicationserver_pb2_grpc
 from rpc_module import Edge2LoRaApplicationServer
@@ -13,7 +12,8 @@ from rpc_module import Edge2LoRaApplicationServer
 from mqtt_module import MQTTModule
 import json
 import base64
-from cryptography.hazmat.primitives.asymmetric import ec
+
+from e2l_module import E2LoRaModule
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -27,10 +27,21 @@ else:
 log = logging.getLogger(__name__)
 
 
-def check_env_vars():
+### GLOBAL VARIABLES ###
+DEFAULT_APP_PORT=2
+DEFAULT_E2L_JOIN_PORT=3
+DEFAULT_E2L_APP_PORT=4
+
+
+"""
+    @brief: This function is used to check if the environment variables are set.
+    @return: True if all environment variables are set, False otherwise.
+    @rtype: bool
+"""
+def check_env_vars() -> bool:
     env_vars = [
         'MQTT_USERNAME', 'MQTT_PASSWORD', 'MQTT_HOST', 'MQTT_PORT',
-        'MQTT_TOPIC'
+        'MQTT_TOPIC', 'MQTT_BASE_TOPIC'
     ]
     for var in env_vars:
         if os.getenv(var) is None:
@@ -45,74 +56,95 @@ def check_env_vars():
                 exit(1)
     return True
 
-
+"""
+    @brief: This function is called when a new message is received from the
+            MQTT broker.
+    @param client: The client object.
+    @param userdata: The user data.
+    @param message: The message.
+    @return: None.
+"""
 def subscribe_callback(client, userdata, message):
-    now = math.floor(time.time() * 1000)
-    log.debug(f"Received message from topic: {message.topic}")
     payload_str = message.payload.decode('utf-8')
     payload = json.loads(payload_str)
-    with open("output_files/data_size.txt", "a") as f:
-        f.write(f'{len(payload_str)}\n')
-    print(now)
     up_msg = payload.get("uplink_message")
-    rx_metadata = up_msg.get("rx_metadata")[0]
-    print(rx_metadata)
-    gw_rx_time = rx_metadata.get("received_at")
-    gw_rx_timetag = math.floor(isoparse(gw_rx_time).timestamp() * 1000)
-    delta = now - gw_rx_timetag
-    with open("output_files/legacy_delta_data.txt", "a") as f:
-        f.write(f'{delta}\n')
-    print(gw_rx_time)
-    print(gw_rx_timetag)
-    print(now)
-    return None
-    log.debug(f"Payload keys: {list(payload.keys())}")
+    up_port = up_msg.get("f_port")
     end_devices_infos = payload.get('end_device_ids')
+    dev_id = end_devices_infos.get('device_id')
     dev_eui = end_devices_infos.get('dev_eui')
     dev_addr = end_devices_infos.get('dev_addr')
-    log.info(f"Dev EUI: {dev_eui}")
-    log.info(f"Dev Addr: {dev_addr}")
-    message = payload.get('uplink_message')
-    frame_payload = message.get('frm_payload')
-    # from base64 to string
-    temperature = base64.b64decode(frame_payload)
-    # temperature = temperature.decode('utf-8')
-    log.info(f"Temperature: {temperature}")
-    log.debug(f"Message keys: {message.keys()}")
-    correlation_ids = payload.get('correlation_ids')
-    log.debug(f"Correlation ids: {correlation_ids}")
+    uplink_message = payload.get('uplink_message')
+    frame_payload = uplink_message.get('frm_payload')
+    ret = 0
+    if up_port == DEFAULT_APP_PORT:
+        log.debug("Received Legacy Frame")
+        # legacy_callback(payload)
+    elif up_port == DEFAULT_E2L_JOIN_PORT:
+        log.debug("Received Edge Join Frame")
+        ret = client.e2l_module.handle_edge_join_request(
+            dev_id = dev_id,
+            dev_eui = dev_eui,
+            dev_addr = dev_addr,
+            dev_pub_key_compressed_base_64 = frame_payload, 
+            mqtt_client = client)
+    elif up_port == DEFAULT_E2L_APP_PORT:
+        log.debug("Received Edge Frame")
+        ret = client.e2l_module.handle_edge_data_from_legacy(dev_eui, dev_addr, frame_payload)
+    else:
+        log.warning(f"Unknown frame port: {up_port}")
+    
+    if ret < 0 :
+        log.error(f"Error handling frame: {ret}")
 
+    return ret
 
 def edge_callback(data):
     log.debug(f"Received data: {data}")
     return data
 
-
 if __name__ == '__main__':
     log.info('Starting...')
+    #####################
+    #   CHECK ENV VARS  #
+    #####################
     check_env_vars()
 
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    #####################
+    #   INIT E2L MODULE #
+    #####################
+    e2l_module = E2LoRaModule()
+
+    #####################
+    #   INIT RPC SERVER #
+    #####################
+    rpc_server_instance = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    e2l_server = Edge2LoRaApplicationServer(e2l_module=e2l_module)
     edge2applicationserver_pb2_grpc.add_Edge2ApplicationServerServicer_to_server(
-        Edge2LoRaApplicationServer(), server
+        e2l_server, rpc_server_instance
         )
-    server.add_insecure_port('[::]:50051')
-    server.start()
+    rpc_server_instance.add_insecure_port('[::]:50051')
+    rpc_server_instance.start()
     log.info('Started RPC server')
 
+    #########################
+    #   INIT MQTT CLIENT    #
+    #########################
     log.debug("Connecting to MQTT broker...")
     mqqt_client = MQTTModule(username=os.getenv('MQTT_USERNAME'),
                              password=os.getenv('MQTT_PASSWORD'),
                              host=os.getenv('MQTT_HOST'),
-                             port=int(os.getenv('MQTT_PORT')))
+                             port=int(os.getenv('MQTT_PORT')),
+                             e2l_module = e2l_module)
     log.debug("Connected to MQTT broker")
 
+    # SUBSCRIBE TO TOPIC
     topic = os.getenv('MQTT_TOPIC')
     log.debug(f"Subscribing to MQTT topic {topic}...")
     mqqt_client.subscribe_to_topic(topic=topic, callback=subscribe_callback)
     log.debug(f"Subscribed to MQTT topic {topic}")
 
-    log.debug("Waiting for messages...")
+    log.info("Waiting for messages from MQTT broker...")
     mqqt_client.wait_for_message()
 
     log.warning('Done, should never reach this point!')
+    sys.exit(0)
