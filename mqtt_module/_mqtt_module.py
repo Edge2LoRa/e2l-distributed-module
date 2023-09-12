@@ -43,7 +43,7 @@ class MQTTModule():
         self.client.loop_forever()
 
     def publish_to_topic(self, topic, message):
-        self.client.publish(
+        return self.client.publish(
             topic=topic, 
             payload=message
             )

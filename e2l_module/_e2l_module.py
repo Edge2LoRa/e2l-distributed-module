@@ -4,6 +4,7 @@ from Crypto.PublicKey import ECC
 import logging
 import grpc
 from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo, GwInfo
+import json
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -14,6 +15,8 @@ else:
 
 log = logging.getLogger(__name__)
 
+
+
 class E2LoRaModule():
     """
     This class is handle the Edge2LoRa Protocol.
@@ -23,7 +26,6 @@ class E2LoRaModule():
         self.ephimeral_private_key = ECC.generate(curve='P-256')
         self.ephimeral_public_key = self.ephimeral_private_key.public_key()
         self.ephimeral_public_key_bytes_compressed = self.ephimeral_public_key.export_key(format='SEC1')
-        log.info(f'ephimeral public key: {self.ephimeral_public_key_bytes_compressed}')
         # Init active directory
         self.active_directory = {
             "e2gws": {},
@@ -34,7 +36,7 @@ class E2LoRaModule():
         @brief: This function is used to send a downlink frame to a ED.
         @para
     """
-    def _send_downlink_frame(self, mqtt_client, base64_message, dev_eui, priority = "HIGHEST"):
+    def _send_downlink_frame(self, mqtt_client, base64_message, dev_id, priority = "HIGHEST"):
         downlink_frame = {
             "downlinks": [
                 {
@@ -44,14 +46,17 @@ class E2LoRaModule():
                 }
             ]
         }
+        downlink_frame_str = json.dumps(downlink_frame)
 
         base_topic = os.getenv('MQTT_BASE_TOPIC')
-        topic = f'{base_topic}/{dev_eui}/down/push'
-        log.info(f'Send downlink frame to {dev_eui}')
-        mqtt_client.publish_to_topic(
+        topic = f'{base_topic}{dev_id}/down/replace'
+        
+        log.info(f'Send downlink frame to {dev_id}.\tTOPIC: {topic}')
+        res = mqtt_client.publish_to_topic(
             topic = topic,
-            message = str(downlink_frame)
+            message = downlink_frame_str
         )
+        log.info(res)
 
         return downlink_frame
     """
@@ -94,7 +99,7 @@ class E2LoRaModule():
         @error code:
             -1: Error 
     """
-    def handle_edge_join_request(self, dev_eui, dev_addr, dev_pub_key_compressed_base_64, mqtt_client):
+    def handle_edge_join_request(self, dev_id, dev_eui, dev_addr, dev_pub_key_compressed_base_64, mqtt_client):
 
         # Assign E2GW to E2ED and store informations
         e2gw = self.active_directory["e2gws"].get(list(self.active_directory["e2gws"].keys())[0])
@@ -103,6 +108,7 @@ class E2LoRaModule():
             return -1
 
         dev_obj = {
+            "dev_id": dev_id,
             "dev_eui": dev_eui,
             "dev_addr": dev_addr,
             "e2gw": e2gw.get("gw_rpc_endpoint_address"),
@@ -112,17 +118,18 @@ class E2LoRaModule():
         g_as_gw = e2gw.get("g_as_gw")
         # Schedule downlink to ed with g_as_gw
         # encode g_as_gw in base64
-        g_as_gw_base_64 = base64.b64encode(g_as_gw.export_key(format="SEC1"))
+        g_as_gw_exported = g_as_gw.export_key(format="SEC1")
+        log.info(f'g_as_gw: {[x for x in g_as_gw_exported]}')
+        g_as_gw_base_64 = base64.b64encode(g_as_gw_exported).decode('utf-8')
         _downlink_frame = self._send_downlink_frame(
             mqtt_client=mqtt_client,
             base64_message = g_as_gw_base_64, 
-            dev_eui = dev_eui
+            dev_id = dev_id
             )
 
         # Generate g_as_ed
         # Decode base64
         dev_pub_key_compressed = base64.b64decode(dev_pub_key_compressed_base_64)
-        log.info(f'dev_pub_key_compressed: {dev_pub_key_compressed}\ttype: {type(dev_pub_key_compressed)}')
         dev_pub_key = ECC.import_key(dev_pub_key_compressed, curve_name='P-256')
         g_as_ed = dev_pub_key.pointQ * self.ephimeral_private_key.d
         g_as_ed_bytes = ECC.construct(curve='P-256', point_x=g_as_ed.x, point_y=g_as_ed.y).export_key(format="SEC1")
@@ -133,16 +140,14 @@ class E2LoRaModule():
         response = e2gw_rpc_stub.handle_ed_pub_info(ed_pub_info)
         g_gw_ed_bytes = response.g_gw_ed
         g_gw_ed = ECC.import_key(g_gw_ed_bytes, curve_name='P-256')
-        edgeSKey = self.ephimeral_private_key.d * g_gw_ed.pointQ
-        edgeSKey_bytes = ECC.construct(curve='P-256', point_x=edgeSKey.x, point_y=edgeSKey.y).export_key(format="SEC1")
+        edgeSKey_int = self.ephimeral_private_key.d * g_gw_ed.pointQ
+        edgeSKey = edgeSKey_int.x.to_bytes()
 
-        log.info(f'edgeSKey: {[x for x in edgeSKey_bytes]}')
+        log.info(f'edgeSKey: {[x for x in edgeSKey]}')
         # Hash edgeSKey
         # import hashlib
         # edgeSIntKey = hashlib.sha256(b'\x00' + edgeSKey_bytes).digest()[:16]
         # edgeSEncKey = hashlib.sha256(b'\x01' + edgeSKey_bytes).digest()[:16]
-        # log.info(f'edgeSIntKey: {[x for x in edgeSIntKey]}')
-        # log.info(f'edgeSEncKey: {[x for x in edgeSEncKey]}')
 
         return 0
      

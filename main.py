@@ -65,23 +65,24 @@ def check_env_vars() -> bool:
     @return: None.
 """
 def subscribe_callback(client, userdata, message):
-    log.debug(f"Received message from topic: {message.topic}")
     payload_str = message.payload.decode('utf-8')
     payload = json.loads(payload_str)
     up_msg = payload.get("uplink_message")
     up_port = up_msg.get("f_port")
     end_devices_infos = payload.get('end_device_ids')
+    dev_id = end_devices_infos.get('device_id')
     dev_eui = end_devices_infos.get('dev_eui')
     dev_addr = end_devices_infos.get('dev_addr')
     uplink_message = payload.get('uplink_message')
     frame_payload = uplink_message.get('frm_payload')
     ret = 0
     if up_port == DEFAULT_APP_PORT:
-        log.debug("Recveived Legacy Frame")
+        log.debug("Received Legacy Frame")
         # legacy_callback(payload)
     elif up_port == DEFAULT_E2L_JOIN_PORT:
         log.debug("Received Edge Join Frame")
         ret = client.e2l_module.handle_edge_join_request(
+            dev_id = dev_id,
             dev_eui = dev_eui,
             dev_addr = dev_addr,
             dev_pub_key_compressed_base_64 = frame_payload, 
