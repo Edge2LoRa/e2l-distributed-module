@@ -43,12 +43,7 @@ class Edge2LoRaApplicationServer(edge2applicationserver_pb2_grpc.Edge2Applicatio
     def new_data(self, request, context):
         now = math.floor(time.time() * 1000)
         data = request.name
-        timetag = request.timetag
 
-        delta = now - timetag
-
-        # self.delta_time_array.append(delta)
-        with open("output_files/e2lora_delta_data.txt", "a") as f:
-            f.write(f'{delta}\n')
+        self.e2l_module.handle_edge_data(data)
 
         return NewDataResponse(message="OK")

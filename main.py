@@ -41,7 +41,7 @@ DEFAULT_E2L_APP_PORT=4
 def check_env_vars() -> bool:
     env_vars = [
         'MQTT_USERNAME', 'MQTT_PASSWORD', 'MQTT_HOST', 'MQTT_PORT',
-        'MQTT_TOPIC', 'MQTT_BASE_TOPIC'
+        'MQTT_TOPIC', 'MQTT_BASE_TOPIC', "DASHBOARD_RPC_HOST", "DASHBOARD_RPC_PORT",
     ]
     for var in env_vars:
         if os.getenv(var) is None:
@@ -78,6 +78,7 @@ def subscribe_callback(client, userdata, message):
     ret = 0
     if up_port == DEFAULT_APP_PORT:
         log.debug("Received Legacy Frame")
+        return client.e2l_module.handle_legacy_data(dev_id, dev_eui, dev_addr, frame_payload)
         # legacy_callback(payload)
     elif up_port == DEFAULT_E2L_JOIN_PORT:
         log.debug("Received Edge Join Frame")
@@ -89,7 +90,7 @@ def subscribe_callback(client, userdata, message):
             mqtt_client = client)
     elif up_port == DEFAULT_E2L_APP_PORT:
         log.debug("Received Edge Frame")
-        ret = client.e2l_module.handle_edge_data_from_legacy(dev_eui, dev_addr, frame_payload)
+        ret = client.e2l_module.handle_edge_data_from_legacy(dev_id, dev_eui, dev_addr, frame_payload)
     else:
         log.warning(f"Unknown frame port: {up_port}")
     
@@ -112,7 +113,9 @@ if __name__ == '__main__':
     #####################
     #   INIT E2L MODULE #
     #####################
-    e2l_module = E2LoRaModule()
+    dashboard_rpc_endpoint = f'{os.getenv("DASHBOARD_RPC_HOST")}:{os.getenv("DASHBOARD_RPC_PORT")}'
+    e2l_module = E2LoRaModule(dashboard_rpc_endpoint=dashboard_rpc_endpoint)
+    e2l_module.start_dashboard_update_loop()
 
     #####################
     #   INIT RPC SERVER #

@@ -1,11 +1,14 @@
 import os
 import base64
+import time
 from Crypto.PublicKey import ECC
 import logging
 import grpc
-from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo, GwInfo
+from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo
+from rpc_module import e2ldashboard_pb2_grpc, SendStatistics
 import json
 import hashlib
+from threading import Thread
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -16,13 +19,16 @@ else:
 
 log = logging.getLogger(__name__)
 
+LOG_ED=1
+LOG_GW=2
+LOG_DM=3
 
 
 class E2LoRaModule():
     """
     This class is handle the Edge2LoRa Protocol.
     """
-    def __init__(self):
+    def __init__(self, dashboard_rpc_endpoint):
         # Generate ephimeral ecc private/public key pair
         self.ephimeral_private_key = ECC.generate(curve='P-256')
         self.ephimeral_public_key = self.ephimeral_private_key.public_key()
@@ -32,6 +38,54 @@ class E2LoRaModule():
             "e2gws": {},
             "e2eds": {}
         }
+        # Statistics collection utils
+        self.statistics = {
+            "rx_legacy_frames": 9,
+            "rx_e2l_frames": 6,
+            "gateways": {},
+            "rx_ns": 10,
+            "tx_ns": 3
+        }
+        # Init RPC Client
+        channel = grpc.insecure_channel(dashboard_rpc_endpoint)
+        self.dashboard_rpc_stub = e2ldashboard_pb2_grpc.GRPCDemoStub(channel)
+        # LOG UTILS
+        self.gw_log = None
+
+    '''
+        @brief: this function send log to the dashboard
+        @param type: log type <LOG_ED|LOG_GW|LOG_DM>
+        @param message: log message
+    '''
+    def _send_log(self, type, message):
+        log.info(f"{type}: {message}")
+
+    def _update_dashboard(self):
+        while(True):
+            time.sleep(2)
+            continue
+            log.info("Sending statistics to dashboard")
+            gw_1_info = {}
+            gw_2_info = {}
+            if(len(self.statistics["gateways"].keys()) > 0):
+                gw_1_info = self.statistics["gateways"][self.statistics["gateways"].keys()[0]]
+            if(len(self.statistics["gateways"].keys()) > 1):
+                gw_2_info = self.statistics["gateways"][self.statistics["gateways"].keys()[1]]
+            
+            request = SendStatistics(
+                client_id = 1,
+                message_data = "aaaa",
+                gw_1_received_frame_num = gw_1_info.get("rx", 4),
+                gw_1_transmitted_frame_num = gw_1_info.get("tx", 5),
+                gw_2_received_frame_num = gw_2_info.get("rx", 2),
+                gw_2_transmitted_frame_num = gw_2_info.get("tx", 4),
+                ns_received_frame_frame_num = self.statistics.get("rx_ns", 0),
+                ns_transmitted_frame_frame_num = self.statistics.get("tx_ns", 0),
+                module_received_frame_frame_num = self.statistics.get("rx_legacy_frames", 0),
+                aggregation_function_result = self.statistics.get("rx_e2l_frames", 0)
+            )
+            self.dashboard_rpc_stub.ClientStreamingMethodStatistics(request)
+
 
     """
         @brief: This function is used to send a downlink frame to a ED.
@@ -85,11 +139,20 @@ class E2LoRaModule():
             "g_as_gw": g_as_gw,
             "e2gw_stub": stub
         }
+        if self.statistics.get("gateways").get(gw_rpc_endpoint_address) is None:
+            self.statistics["gateways"][gw_rpc_endpoint_address] = {
+                "rx": 0,
+                "tx": 0
+            }
+        if self.gw_log is None:
+            self.gw_log = gw_rpc_endpoint_address
         log.info(f'E2GW {gw_rpc_endpoint_address} is added to active directory')
+        if self.gw_log == gw_rpc_endpoint_address:
+            self._send_log(LOG_GW, f'Ephimeral E2GW ECC key pair received')
         return 0
 
     """
-        @brief  This funciont handle new public key info received by a ED.
+        @brief  This function handle new public key info received by a ED.
                 It complete the process of key agreement for the server.
         @param dev_eui: The Dev EUI.
         @param dev_addr: The Dev Addr.
@@ -155,5 +218,24 @@ class E2LoRaModule():
 
         return 0
      
-    def handle_edge_data_from_legacy(self):
+    def handle_edge_data_from_legacy(self, dev_id, dev_eui, dev_addr, frame_payload):
+        log.info("Received Edge Frame from legacy route");
+        self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
+        self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
+        self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
         return 0
+        
+    def handle_legacy_data(self, dev_id, dev_eui, dev_addr, frame_payload):
+        log.info("Received Legacy Frame from edge route");
+        self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
+        self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
+        self.statistics["rx_legacy_frame"] = self.statistics["rx_legacy_frame"] + 1
+        return 0
+
+    
+    def handle_edge_data(self, data):
+        self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
+
+    def start_dashboard_update_loop(self):
+        self.dashboard_update_loop = Thread(target=self._update_dashboard)
+        self.dashboard_update_loop.start()
