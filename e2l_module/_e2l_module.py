@@ -5,7 +5,7 @@ from Crypto.PublicKey import ECC
 import logging
 import grpc
 from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo
-from rpc_module import e2ldashboard_pb2_grpc, SendStatistics
+from .__private__ import e2ldashboard_pb2_grpc, SendStatistics
 import json
 import hashlib
 from threading import Thread

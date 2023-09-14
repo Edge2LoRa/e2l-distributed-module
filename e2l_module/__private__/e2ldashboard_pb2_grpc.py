@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import rpc_module.__private__.e2ldashboard_pb2 as e2ldashboard__pb2
+import e2l_module.__private__.e2ldashboard_pb2 as e2ldashboard__pb2
 
 
 class GRPCDemoStub(object):
