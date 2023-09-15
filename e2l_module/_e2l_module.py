@@ -40,17 +40,22 @@ class E2LoRaModule():
         }
         # Statistics collection utils
         self.statistics = {
-            "rx_legacy_frames": 9,
-            "rx_e2l_frames": 6,
+            "rx_legacy_frames": 0,
+            "rx_e2l_frames": 0,
             "gateways": {},
-            "rx_ns": 10,
-            "tx_ns": 3
+            "rx_ns": 0,
+            "tx_ns": 0
         }
         self.e2gw_ids = []
         self.e2ed_ids = []
         # Init RPC Client
         channel = grpc.insecure_channel(dashboard_rpc_endpoint)
-        self.dashboard_rpc_stub = demo_pb2_grpc.GRPCDemoStub(channel)
+        try:
+            self.dashboard_rpc_stub = demo_pb2_grpc.GRPCDemoStub(channel)
+            # self.dashboard_rpc_stub = None
+        except:
+            self.dashboard_rpc_stub = None
+        
         # LOG UTILS
         self.gw_log = None
         # LOG
@@ -62,6 +67,8 @@ class E2LoRaModule():
         @param message: log message
     '''
     def _send_log(self, type, message):
+        if self.dashboard_rpc_stub is None:
+            return
         request = SendLogMessage(
             client_id = 1,
             message_data = "",
@@ -81,14 +88,14 @@ class E2LoRaModule():
                 gw_2_info = self.statistics["gateways"][self.e2ed_ids[1]]
             request = SendStatistics(
                 client_id = 1,
-                message_data = "aaaa",
-                gw_1_received_frame_num = gw_1_info.get("rx", 4),
-                gw_1_transmitted_frame_num = gw_1_info.get("tx", 5),
-                gw_2_received_frame_num = gw_2_info.get("rx", 2),
-                gw_2_transmitted_frame_num = gw_2_info.get("tx", 4),
+                message_data = "",
+                gw_1_received_frame_num = gw_1_info.get("rx", 0),
+                gw_1_transmitted_frame_num = gw_1_info.get("tx", 0),
+                gw_2_received_frame_num = gw_2_info.get("rx", 0),
+                gw_2_transmitted_frame_num = gw_2_info.get("tx", 0),
                 ns_received_frame_frame_num = self.statistics.get("rx_ns", 0),
                 ns_transmitted_frame_frame_num = self.statistics.get("tx_ns", 0),
-                module_received_frame_frame_num = self.statistics.get("rx_legacy_frames", 0),
+                module_received_frame_frame_num = self.statistics.get("rx_legacy_frames", 0) + self.statistics.get("rx_e2l_frames", 0),
                 aggregation_function_result = self.statistics.get("rx_e2l_frames", 0)
             )
             yield request
@@ -244,10 +251,15 @@ class E2LoRaModule():
         return 0
         
     def handle_legacy_data(self, dev_id, dev_eui, dev_addr, frame_payload):
-        log.info("Received Legacy Frame from edge route");
+        log.info(f'Received Legacy Frame from Legacy Route.');
         self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
         self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
         self.statistics["rx_legacy_frames"] = self.statistics["rx_legacy_frames"] + 1
+        for i in range(len(self.e2gw_ids)):
+            if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
+                continue
+            self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + 1
+            self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
         return 0
 
     
@@ -255,5 +267,7 @@ class E2LoRaModule():
         self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
 
     def start_dashboard_update_loop(self):
+        if self.dashboard_rpc_stub is None:
+            return
         self.dashboard_update_loop = Thread(target=self._update_dashboard)
         self.dashboard_update_loop.start()
