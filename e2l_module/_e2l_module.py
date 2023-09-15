@@ -5,7 +5,7 @@ from Crypto.PublicKey import ECC
 import logging
 import grpc
 from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo
-from .__private__ import e2ldashboard_pb2_grpc, SendStatistics
+from .__private__ import demo_pb2_grpc, SendStatistics, SendLogMessage
 import json
 import hashlib
 from threading import Thread
@@ -46,11 +46,15 @@ class E2LoRaModule():
             "rx_ns": 10,
             "tx_ns": 3
         }
+        self.e2gw_ids = []
+        self.e2ed_ids = []
         # Init RPC Client
         channel = grpc.insecure_channel(dashboard_rpc_endpoint)
-        self.dashboard_rpc_stub = e2ldashboard_pb2_grpc.GRPCDemoStub(channel)
+        self.dashboard_rpc_stub = demo_pb2_grpc.GRPCDemoStub(channel)
         # LOG UTILS
         self.gw_log = None
+        # LOG
+        self._send_log(LOG_ED, "E2LoRa Module started")
 
     '''
         @brief: this function send log to the dashboard
@@ -58,20 +62,23 @@ class E2LoRaModule():
         @param message: log message
     '''
     def _send_log(self, type, message):
-        log.info(f"{type}: {message}")
+        request = SendLogMessage(
+            client_id = 1,
+            message_data = "",
+            key_agreement_log_message_node_id = type,
+            key_agreement_message_log = message,
+            key_agreement_process_time = 0,
+        )
+        self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
 
-    def _update_dashboard(self):
-        while(True):
-            time.sleep(2)
-            continue
-            log.info("Sending statistics to dashboard")
+    def _get_stats(self):
+        for i in range(10):
             gw_1_info = {}
             gw_2_info = {}
-            if(len(self.statistics["gateways"].keys()) > 0):
-                gw_1_info = self.statistics["gateways"][self.statistics["gateways"].keys()[0]]
-            if(len(self.statistics["gateways"].keys()) > 1):
-                gw_2_info = self.statistics["gateways"][self.statistics["gateways"].keys()[1]]
-            
+            if(len(self.e2gw_ids) > 0):
+                gw_1_info = self.statistics["gateways"][self.e2gw_ids[0]]
+            if(len(self.e2gw_ids) > 1):
+                gw_2_info = self.statistics["gateways"][self.e2ed_ids[1]]
             request = SendStatistics(
                 client_id = 1,
                 message_data = "aaaa",
@@ -84,7 +91,14 @@ class E2LoRaModule():
                 module_received_frame_frame_num = self.statistics.get("rx_legacy_frames", 0),
                 aggregation_function_result = self.statistics.get("rx_e2l_frames", 0)
             )
-            self.dashboard_rpc_stub.ClientStreamingMethodStatistics(request)
+            yield request
+            time.sleep(2)
+
+    def _update_dashboard(self):
+        while(True):
+            time.sleep(2)
+            log.info("Sending statistics to dashboard")
+            self.dashboard_rpc_stub.ClientStreamingMethodStatistics(self._get_stats())
 
 
     """
@@ -144,6 +158,8 @@ class E2LoRaModule():
                 "rx": 0,
                 "tx": 0
             }
+        if gw_rpc_endpoint_address not in self.e2gw_ids:
+            self.e2gw_ids.append(gw_rpc_endpoint_address)
         if self.gw_log is None:
             self.gw_log = gw_rpc_endpoint_address
         log.info(f'E2GW {gw_rpc_endpoint_address} is added to active directory')
@@ -215,6 +231,8 @@ class E2LoRaModule():
         dev_obj["edgeSIntKey"] = edgeSIntKey
         dev_obj["edgeSEncKey"] = edgeSEncKey
         self.active_directory["e2eds"][dev_eui] = dev_obj
+        if dev_eui not in self.e2ed_ids:
+            self.e2ed_ids.append(dev_eui)
 
         return 0
      
@@ -229,7 +247,7 @@ class E2LoRaModule():
         log.info("Received Legacy Frame from edge route");
         self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
         self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
-        self.statistics["rx_legacy_frame"] = self.statistics["rx_legacy_frame"] + 1
+        self.statistics["rx_legacy_frames"] = self.statistics["rx_legacy_frames"] + 1
         return 0
 
     

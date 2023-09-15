@@ -1,2 +1,2 @@
-from .e2ldashboard_pb2 import *
-from .e2ldashboard_pb2_grpc import *
+from .demo_pb2 import *
+from .demo_pb2_grpc import *

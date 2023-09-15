@@ -2,11 +2,14 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import e2l_module.__private__.e2ldashboard_pb2 as e2ldashboard__pb2
+import e2l_module.__private__.demo_pb2 as demo__pb2
 
 
 class GRPCDemoStub(object):
-    """Missing associated documentation comment in .proto file."""
+    """`service` 是用来给gRPC服务定义方法的, 格式固定, 类似于Golang中定义一个接口
+    `service` is used to define methods for gRPC services in a fixed format, similar to defining
+    an interface in Golang
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -15,138 +18,165 @@ class GRPCDemoStub(object):
             channel: A grpc.Channel.
         """
         self.SimpleMethod = channel.unary_unary(
-                '/e2ldashboard.GRPCDemo/SimpleMethod',
-                request_serializer=e2ldashboard__pb2.Request.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.Response.FromString,
+                '/demo.GRPCDemo/SimpleMethod',
+                request_serializer=demo__pb2.Request.SerializeToString,
+                response_deserializer=demo__pb2.Response.FromString,
                 )
         self.ClientStreamingMethod = channel.stream_unary(
-                '/e2ldashboard.GRPCDemo/ClientStreamingMethod',
-                request_serializer=e2ldashboard__pb2.Request.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.Response.FromString,
+                '/demo.GRPCDemo/ClientStreamingMethod',
+                request_serializer=demo__pb2.Request.SerializeToString,
+                response_deserializer=demo__pb2.Response.FromString,
                 )
         self.ServerStreamingMethod = channel.unary_stream(
-                '/e2ldashboard.GRPCDemo/ServerStreamingMethod',
-                request_serializer=e2ldashboard__pb2.Request.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.Response.FromString,
+                '/demo.GRPCDemo/ServerStreamingMethod',
+                request_serializer=demo__pb2.Request.SerializeToString,
+                response_deserializer=demo__pb2.Response.FromString,
                 )
         self.BidirectionalStreamingMethod = channel.stream_stream(
-                '/e2ldashboard.GRPCDemo/BidirectionalStreamingMethod',
-                request_serializer=e2ldashboard__pb2.Request.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.Response.FromString,
+                '/demo.GRPCDemo/BidirectionalStreamingMethod',
+                request_serializer=demo__pb2.Request.SerializeToString,
+                response_deserializer=demo__pb2.Response.FromString,
                 )
         self.SimpleMethodsStatistics = channel.unary_unary(
-                '/e2ldashboard.GRPCDemo/SimpleMethodsStatistics',
-                request_serializer=e2ldashboard__pb2.SendStatistics.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.ReplyStatistics.FromString,
+                '/demo.GRPCDemo/SimpleMethodsStatistics',
+                request_serializer=demo__pb2.SendStatistics.SerializeToString,
+                response_deserializer=demo__pb2.ReplyStatistics.FromString,
                 )
         self.ClientStreamingMethodStatistics = channel.stream_unary(
-                '/e2ldashboard.GRPCDemo/ClientStreamingMethodStatistics',
-                request_serializer=e2ldashboard__pb2.SendStatistics.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.ReplyStatistics.FromString,
+                '/demo.GRPCDemo/ClientStreamingMethodStatistics',
+                request_serializer=demo__pb2.SendStatistics.SerializeToString,
+                response_deserializer=demo__pb2.ReplyStatistics.FromString,
                 )
         self.ServerStreamingMethodStatistics = channel.unary_stream(
-                '/e2ldashboard.GRPCDemo/ServerStreamingMethodStatistics',
-                request_serializer=e2ldashboard__pb2.SendStatistics.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.ReplyStatistics.FromString,
+                '/demo.GRPCDemo/ServerStreamingMethodStatistics',
+                request_serializer=demo__pb2.SendStatistics.SerializeToString,
+                response_deserializer=demo__pb2.ReplyStatistics.FromString,
                 )
         self.BidirectionalStreamingMethodStatistics = channel.stream_stream(
-                '/e2ldashboard.GRPCDemo/BidirectionalStreamingMethodStatistics',
-                request_serializer=e2ldashboard__pb2.SendStatistics.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.ReplyStatistics.FromString,
+                '/demo.GRPCDemo/BidirectionalStreamingMethodStatistics',
+                request_serializer=demo__pb2.SendStatistics.SerializeToString,
+                response_deserializer=demo__pb2.ReplyStatistics.FromString,
                 )
         self.SimpleMethodsLogMessage = channel.unary_unary(
-                '/e2ldashboard.GRPCDemo/SimpleMethodsLogMessage',
-                request_serializer=e2ldashboard__pb2.SendLogMessage.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.ReplyLogMessage.FromString,
+                '/demo.GRPCDemo/SimpleMethodsLogMessage',
+                request_serializer=demo__pb2.SendLogMessage.SerializeToString,
+                response_deserializer=demo__pb2.ReplyLogMessage.FromString,
                 )
         self.SimpleMethodsLogED = channel.unary_unary(
-                '/e2ldashboard.GRPCDemo/SimpleMethodsLogED',
-                request_serializer=e2ldashboard__pb2.SendLogED.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.ReplyLogED.FromString,
+                '/demo.GRPCDemo/SimpleMethodsLogED',
+                request_serializer=demo__pb2.SendLogED.SerializeToString,
+                response_deserializer=demo__pb2.ReplyLogED.FromString,
                 )
         self.SimpleMethodsLogGW = channel.unary_unary(
-                '/e2ldashboard.GRPCDemo/SimpleMethodsLogGW',
-                request_serializer=e2ldashboard__pb2.SendLogGW.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.ReplyLogGW.FromString,
+                '/demo.GRPCDemo/SimpleMethodsLogGW',
+                request_serializer=demo__pb2.SendLogGW.SerializeToString,
+                response_deserializer=demo__pb2.ReplyLogGW.FromString,
                 )
         self.SimpleMethodsLogDM = channel.unary_unary(
-                '/e2ldashboard.GRPCDemo/SimpleMethodsLogDM',
-                request_serializer=e2ldashboard__pb2.SendLogDM.SerializeToString,
-                response_deserializer=e2ldashboard__pb2.ReplyLogDM.FromString,
+                '/demo.GRPCDemo/SimpleMethodsLogDM',
+                request_serializer=demo__pb2.SendLogDM.SerializeToString,
+                response_deserializer=demo__pb2.ReplyLogDM.FromString,
                 )
 
 
 class GRPCDemoServicer(object):
-    """Missing associated documentation comment in .proto file."""
+    """`service` 是用来给gRPC服务定义方法的, 格式固定, 类似于Golang中定义一个接口
+    `service` is used to define methods for gRPC services in a fixed format, similar to defining
+    an interface in Golang
+    """
 
     def SimpleMethod(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """unary-unary(In a single call, the client can only send request once, and the server can
+        only respond once.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ClientStreamingMethod(self, request_iterator, context):
-        """Missing associated documentation comment in .proto file."""
+        """stream-unary (In a single call, the client can transfer data to the server several times,
+        but the server can only return a response once.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ServerStreamingMethod(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """unary-stream (In a single call, the client can only transmit data to the server at one time,
+        but the server can return the response many times.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def BidirectionalStreamingMethod(self, request_iterator, context):
-        """Missing associated documentation comment in .proto file."""
+        """stream-stream (In a single call, both client and server can send and receive data
+        to each other multiple times.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SimpleMethodsStatistics(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """unary-unary(In a single call, the client can only send request once, and the server can
+        only respond once.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ClientStreamingMethodStatistics(self, request_iterator, context):
-        """Missing associated documentation comment in .proto file."""
+        """stream-unary (In a single call, the client can transfer data to the server several times,
+        but the server can only return a response once.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ServerStreamingMethodStatistics(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """unary-stream (In a single call, the client can only transmit data to the server at one time,
+        but the server can return the response many times.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def BidirectionalStreamingMethodStatistics(self, request_iterator, context):
-        """Missing associated documentation comment in .proto file."""
+        """stream-stream (In a single call, both client and server can send and receive data
+        to each other multiple times.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SimpleMethodsLogMessage(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """unary-unary(In a single call, the client can only send request once, and the server can
+        only respond once.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SimpleMethodsLogED(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """unary-unary(In a single call, the client can only send request once, and the server can
+        only respond once.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SimpleMethodsLogGW(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """unary-unary(In a single call, the client can only send request once, and the server can
+        only respond once.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SimpleMethodsLogDM(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """unary-unary(In a single call, the client can only send request once, and the server can
+        only respond once.)
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -156,73 +186,76 @@ def add_GRPCDemoServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'SimpleMethod': grpc.unary_unary_rpc_method_handler(
                     servicer.SimpleMethod,
-                    request_deserializer=e2ldashboard__pb2.Request.FromString,
-                    response_serializer=e2ldashboard__pb2.Response.SerializeToString,
+                    request_deserializer=demo__pb2.Request.FromString,
+                    response_serializer=demo__pb2.Response.SerializeToString,
             ),
             'ClientStreamingMethod': grpc.stream_unary_rpc_method_handler(
                     servicer.ClientStreamingMethod,
-                    request_deserializer=e2ldashboard__pb2.Request.FromString,
-                    response_serializer=e2ldashboard__pb2.Response.SerializeToString,
+                    request_deserializer=demo__pb2.Request.FromString,
+                    response_serializer=demo__pb2.Response.SerializeToString,
             ),
             'ServerStreamingMethod': grpc.unary_stream_rpc_method_handler(
                     servicer.ServerStreamingMethod,
-                    request_deserializer=e2ldashboard__pb2.Request.FromString,
-                    response_serializer=e2ldashboard__pb2.Response.SerializeToString,
+                    request_deserializer=demo__pb2.Request.FromString,
+                    response_serializer=demo__pb2.Response.SerializeToString,
             ),
             'BidirectionalStreamingMethod': grpc.stream_stream_rpc_method_handler(
                     servicer.BidirectionalStreamingMethod,
-                    request_deserializer=e2ldashboard__pb2.Request.FromString,
-                    response_serializer=e2ldashboard__pb2.Response.SerializeToString,
+                    request_deserializer=demo__pb2.Request.FromString,
+                    response_serializer=demo__pb2.Response.SerializeToString,
             ),
             'SimpleMethodsStatistics': grpc.unary_unary_rpc_method_handler(
                     servicer.SimpleMethodsStatistics,
-                    request_deserializer=e2ldashboard__pb2.SendStatistics.FromString,
-                    response_serializer=e2ldashboard__pb2.ReplyStatistics.SerializeToString,
+                    request_deserializer=demo__pb2.SendStatistics.FromString,
+                    response_serializer=demo__pb2.ReplyStatistics.SerializeToString,
             ),
             'ClientStreamingMethodStatistics': grpc.stream_unary_rpc_method_handler(
                     servicer.ClientStreamingMethodStatistics,
-                    request_deserializer=e2ldashboard__pb2.SendStatistics.FromString,
-                    response_serializer=e2ldashboard__pb2.ReplyStatistics.SerializeToString,
+                    request_deserializer=demo__pb2.SendStatistics.FromString,
+                    response_serializer=demo__pb2.ReplyStatistics.SerializeToString,
             ),
             'ServerStreamingMethodStatistics': grpc.unary_stream_rpc_method_handler(
                     servicer.ServerStreamingMethodStatistics,
-                    request_deserializer=e2ldashboard__pb2.SendStatistics.FromString,
-                    response_serializer=e2ldashboard__pb2.ReplyStatistics.SerializeToString,
+                    request_deserializer=demo__pb2.SendStatistics.FromString,
+                    response_serializer=demo__pb2.ReplyStatistics.SerializeToString,
             ),
             'BidirectionalStreamingMethodStatistics': grpc.stream_stream_rpc_method_handler(
                     servicer.BidirectionalStreamingMethodStatistics,
-                    request_deserializer=e2ldashboard__pb2.SendStatistics.FromString,
-                    response_serializer=e2ldashboard__pb2.ReplyStatistics.SerializeToString,
+                    request_deserializer=demo__pb2.SendStatistics.FromString,
+                    response_serializer=demo__pb2.ReplyStatistics.SerializeToString,
             ),
             'SimpleMethodsLogMessage': grpc.unary_unary_rpc_method_handler(
                     servicer.SimpleMethodsLogMessage,
-                    request_deserializer=e2ldashboard__pb2.SendLogMessage.FromString,
-                    response_serializer=e2ldashboard__pb2.ReplyLogMessage.SerializeToString,
+                    request_deserializer=demo__pb2.SendLogMessage.FromString,
+                    response_serializer=demo__pb2.ReplyLogMessage.SerializeToString,
             ),
             'SimpleMethodsLogED': grpc.unary_unary_rpc_method_handler(
                     servicer.SimpleMethodsLogED,
-                    request_deserializer=e2ldashboard__pb2.SendLogED.FromString,
-                    response_serializer=e2ldashboard__pb2.ReplyLogED.SerializeToString,
+                    request_deserializer=demo__pb2.SendLogED.FromString,
+                    response_serializer=demo__pb2.ReplyLogED.SerializeToString,
             ),
             'SimpleMethodsLogGW': grpc.unary_unary_rpc_method_handler(
                     servicer.SimpleMethodsLogGW,
-                    request_deserializer=e2ldashboard__pb2.SendLogGW.FromString,
-                    response_serializer=e2ldashboard__pb2.ReplyLogGW.SerializeToString,
+                    request_deserializer=demo__pb2.SendLogGW.FromString,
+                    response_serializer=demo__pb2.ReplyLogGW.SerializeToString,
             ),
             'SimpleMethodsLogDM': grpc.unary_unary_rpc_method_handler(
                     servicer.SimpleMethodsLogDM,
-                    request_deserializer=e2ldashboard__pb2.SendLogDM.FromString,
-                    response_serializer=e2ldashboard__pb2.ReplyLogDM.SerializeToString,
+                    request_deserializer=demo__pb2.SendLogDM.FromString,
+                    response_serializer=demo__pb2.ReplyLogDM.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'e2ldashboard.GRPCDemo', rpc_method_handlers)
+            'demo.GRPCDemo', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
 class GRPCDemo(object):
-    """Missing associated documentation comment in .proto file."""
+    """`service` 是用来给gRPC服务定义方法的, 格式固定, 类似于Golang中定义一个接口
+    `service` is used to define methods for gRPC services in a fixed format, similar to defining
+    an interface in Golang
+    """
 
     @staticmethod
     def SimpleMethod(request,
@@ -235,9 +268,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/e2ldashboard.GRPCDemo/SimpleMethod',
-            e2ldashboard__pb2.Request.SerializeToString,
-            e2ldashboard__pb2.Response.FromString,
+        return grpc.experimental.unary_unary(request, target, '/demo.GRPCDemo/SimpleMethod',
+            demo__pb2.Request.SerializeToString,
+            demo__pb2.Response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -252,9 +285,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_unary(request_iterator, target, '/e2ldashboard.GRPCDemo/ClientStreamingMethod',
-            e2ldashboard__pb2.Request.SerializeToString,
-            e2ldashboard__pb2.Response.FromString,
+        return grpc.experimental.stream_unary(request_iterator, target, '/demo.GRPCDemo/ClientStreamingMethod',
+            demo__pb2.Request.SerializeToString,
+            demo__pb2.Response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -269,9 +302,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/e2ldashboard.GRPCDemo/ServerStreamingMethod',
-            e2ldashboard__pb2.Request.SerializeToString,
-            e2ldashboard__pb2.Response.FromString,
+        return grpc.experimental.unary_stream(request, target, '/demo.GRPCDemo/ServerStreamingMethod',
+            demo__pb2.Request.SerializeToString,
+            demo__pb2.Response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -286,9 +319,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_stream(request_iterator, target, '/e2ldashboard.GRPCDemo/BidirectionalStreamingMethod',
-            e2ldashboard__pb2.Request.SerializeToString,
-            e2ldashboard__pb2.Response.FromString,
+        return grpc.experimental.stream_stream(request_iterator, target, '/demo.GRPCDemo/BidirectionalStreamingMethod',
+            demo__pb2.Request.SerializeToString,
+            demo__pb2.Response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -303,9 +336,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/e2ldashboard.GRPCDemo/SimpleMethodsStatistics',
-            e2ldashboard__pb2.SendStatistics.SerializeToString,
-            e2ldashboard__pb2.ReplyStatistics.FromString,
+        return grpc.experimental.unary_unary(request, target, '/demo.GRPCDemo/SimpleMethodsStatistics',
+            demo__pb2.SendStatistics.SerializeToString,
+            demo__pb2.ReplyStatistics.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -320,9 +353,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_unary(request_iterator, target, '/e2ldashboard.GRPCDemo/ClientStreamingMethodStatistics',
-            e2ldashboard__pb2.SendStatistics.SerializeToString,
-            e2ldashboard__pb2.ReplyStatistics.FromString,
+        return grpc.experimental.stream_unary(request_iterator, target, '/demo.GRPCDemo/ClientStreamingMethodStatistics',
+            demo__pb2.SendStatistics.SerializeToString,
+            demo__pb2.ReplyStatistics.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -337,9 +370,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/e2ldashboard.GRPCDemo/ServerStreamingMethodStatistics',
-            e2ldashboard__pb2.SendStatistics.SerializeToString,
-            e2ldashboard__pb2.ReplyStatistics.FromString,
+        return grpc.experimental.unary_stream(request, target, '/demo.GRPCDemo/ServerStreamingMethodStatistics',
+            demo__pb2.SendStatistics.SerializeToString,
+            demo__pb2.ReplyStatistics.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -354,9 +387,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_stream(request_iterator, target, '/e2ldashboard.GRPCDemo/BidirectionalStreamingMethodStatistics',
-            e2ldashboard__pb2.SendStatistics.SerializeToString,
-            e2ldashboard__pb2.ReplyStatistics.FromString,
+        return grpc.experimental.stream_stream(request_iterator, target, '/demo.GRPCDemo/BidirectionalStreamingMethodStatistics',
+            demo__pb2.SendStatistics.SerializeToString,
+            demo__pb2.ReplyStatistics.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -371,9 +404,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/e2ldashboard.GRPCDemo/SimpleMethodsLogMessage',
-            e2ldashboard__pb2.SendLogMessage.SerializeToString,
-            e2ldashboard__pb2.ReplyLogMessage.FromString,
+        return grpc.experimental.unary_unary(request, target, '/demo.GRPCDemo/SimpleMethodsLogMessage',
+            demo__pb2.SendLogMessage.SerializeToString,
+            demo__pb2.ReplyLogMessage.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -388,9 +421,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/e2ldashboard.GRPCDemo/SimpleMethodsLogED',
-            e2ldashboard__pb2.SendLogED.SerializeToString,
-            e2ldashboard__pb2.ReplyLogED.FromString,
+        return grpc.experimental.unary_unary(request, target, '/demo.GRPCDemo/SimpleMethodsLogED',
+            demo__pb2.SendLogED.SerializeToString,
+            demo__pb2.ReplyLogED.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -405,9 +438,9 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/e2ldashboard.GRPCDemo/SimpleMethodsLogGW',
-            e2ldashboard__pb2.SendLogGW.SerializeToString,
-            e2ldashboard__pb2.ReplyLogGW.FromString,
+        return grpc.experimental.unary_unary(request, target, '/demo.GRPCDemo/SimpleMethodsLogGW',
+            demo__pb2.SendLogGW.SerializeToString,
+            demo__pb2.ReplyLogGW.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -422,8 +455,8 @@ class GRPCDemo(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/e2ldashboard.GRPCDemo/SimpleMethodsLogDM',
-            e2ldashboard__pb2.SendLogDM.SerializeToString,
-            e2ldashboard__pb2.ReplyLogDM.FromString,
+        return grpc.experimental.unary_unary(request, target, '/demo.GRPCDemo/SimpleMethodsLogDM',
+            demo__pb2.SendLogDM.SerializeToString,
+            demo__pb2.ReplyLogDM.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
