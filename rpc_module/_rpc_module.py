@@ -3,7 +3,6 @@ import logging
 import time
 import math
 from rpc_module.__private__ import edge2applicationserver_pb2_grpc
-from rpc_module.__private__.edge2applicationserver_pb2 import NewDataResponse
 from rpc_module.__private__.edge2applicationserver_pb2 import ResponseMessage
 
 DEBUG = os.getenv('DEBUG', False)
@@ -42,8 +41,19 @@ class Edge2LoRaApplicationServer(edge2applicationserver_pb2_grpc.Edge2Applicatio
 
     def new_data(self, request, context):
         now = math.floor(time.time() * 1000)
-        data = request.name
+        gw_id = request.gw_id
+        dev_eui = request.dev_eui
+        dev_addr = request.dev_addr
+        aggregated_data = request.aggregated_data
+        timetag = request.timetag
+        delta_time = now - timetag
 
-        self.e2l_module.handle_edge_data(data)
+        self.e2l_module.handle_edge_data(
+            gw_id = gw_id,
+            dev_eui = dev_eui,
+            dev_addr = dev_addr,
+            aggregated_data = aggregated_data,
+            delta_time = delta_time
+        )
 
-        return NewDataResponse(message="OK")
+        return ResponseMessage(status_code=0, message="OK")

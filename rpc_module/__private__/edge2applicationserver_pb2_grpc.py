@@ -16,12 +16,12 @@ class Edge2ApplicationServerStub(object):
         """
         self.new_data = channel.unary_unary(
                 '/edge2applicationserver.Edge2ApplicationServer/new_data',
-                request_serializer=edge2applicationserver__pb2.NewDataRequest.SerializeToString,
-                response_deserializer=edge2applicationserver__pb2.NewDataResponse.FromString,
+                request_serializer=edge2applicationserver__pb2.EdgeData.SerializeToString,
+                response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
                 )
         self.store_e2gw_pub_info = channel.unary_unary(
                 '/edge2applicationserver.Edge2ApplicationServer/store_e2gw_pub_info',
-                request_serializer=edge2applicationserver__pb2.e2gw_pub_info.SerializeToString,
+                request_serializer=edge2applicationserver__pb2.E2GWPubInfo.SerializeToString,
                 response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
                 )
 
@@ -46,12 +46,12 @@ def add_Edge2ApplicationServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'new_data': grpc.unary_unary_rpc_method_handler(
                     servicer.new_data,
-                    request_deserializer=edge2applicationserver__pb2.NewDataRequest.FromString,
-                    response_serializer=edge2applicationserver__pb2.NewDataResponse.SerializeToString,
+                    request_deserializer=edge2applicationserver__pb2.EdgeData.FromString,
+                    response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
             ),
             'store_e2gw_pub_info': grpc.unary_unary_rpc_method_handler(
                     servicer.store_e2gw_pub_info,
-                    request_deserializer=edge2applicationserver__pb2.e2gw_pub_info.FromString,
+                    request_deserializer=edge2applicationserver__pb2.E2GWPubInfo.FromString,
                     response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
             ),
     }
@@ -76,8 +76,8 @@ class Edge2ApplicationServer(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/edge2applicationserver.Edge2ApplicationServer/new_data',
-            edge2applicationserver__pb2.NewDataRequest.SerializeToString,
-            edge2applicationserver__pb2.NewDataResponse.FromString,
+            edge2applicationserver__pb2.EdgeData.SerializeToString,
+            edge2applicationserver__pb2.ResponseMessage.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -93,7 +93,7 @@ class Edge2ApplicationServer(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/edge2applicationserver.Edge2ApplicationServer/store_e2gw_pub_info',
-            edge2applicationserver__pb2.e2gw_pub_info.SerializeToString,
+            edge2applicationserver__pb2.E2GWPubInfo.SerializeToString,
             edge2applicationserver__pb2.ResponseMessage.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

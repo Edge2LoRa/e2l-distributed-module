@@ -9,10 +9,10 @@ class ResponseMessage(_message.Message):
     STATUS_CODE_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
     status_code: int
-    message: bytes
-    def __init__(self, status_code: _Optional[int] = ..., message: _Optional[bytes] = ...) -> None: ...
+    message: str
+    def __init__(self, status_code: _Optional[int] = ..., message: _Optional[str] = ...) -> None: ...
 
-class e2gw_pub_info(_message.Message):
+class E2GWPubInfo(_message.Message):
     __slots__ = ["gw_ip_addr", "gw_port", "e2gw_pub_key"]
     GW_IP_ADDR_FIELD_NUMBER: _ClassVar[int]
     GW_PORT_FIELD_NUMBER: _ClassVar[int]
@@ -22,16 +22,16 @@ class e2gw_pub_info(_message.Message):
     e2gw_pub_key: bytes
     def __init__(self, gw_ip_addr: _Optional[str] = ..., gw_port: _Optional[str] = ..., e2gw_pub_key: _Optional[bytes] = ...) -> None: ...
 
-class NewDataRequest(_message.Message):
-    __slots__ = ["name", "timetag"]
-    NAME_FIELD_NUMBER: _ClassVar[int]
+class EdgeData(_message.Message):
+    __slots__ = ["gw_id", "dev_eui", "dev_addr", "aggregated_data", "timetag"]
+    GW_ID_FIELD_NUMBER: _ClassVar[int]
+    DEV_EUI_FIELD_NUMBER: _ClassVar[int]
+    DEV_ADDR_FIELD_NUMBER: _ClassVar[int]
+    AGGREGATED_DATA_FIELD_NUMBER: _ClassVar[int]
     TIMETAG_FIELD_NUMBER: _ClassVar[int]
-    name: str
+    gw_id: str
+    dev_eui: str
+    dev_addr: str
+    aggregated_data: int
     timetag: int
-    def __init__(self, name: _Optional[str] = ..., timetag: _Optional[int] = ...) -> None: ...
-
-class NewDataResponse(_message.Message):
-    __slots__ = ["message"]
-    MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    message: str
-    def __init__(self, message: _Optional[str] = ...) -> None: ...
+    def __init__(self, gw_id: _Optional[str] = ..., dev_eui: _Optional[str] = ..., dev_addr: _Optional[str] = ..., aggregated_data: _Optional[int] = ..., timetag: _Optional[int] = ...) -> None: ...

@@ -99,11 +99,11 @@ class E2LoRaModule():
                 aggregation_function_result = self.statistics.get("rx_e2l_frames", 0)
             )
             yield request
-            time.sleep(2)
+            time.sleep(5)
 
     def _update_dashboard(self):
         while(True):
-            time.sleep(2)
+            time.sleep(5)
             log.info("Sending statistics to dashboard")
             self.dashboard_rpc_stub.ClientStreamingMethodStatistics(self._get_stats())
 
@@ -244,7 +244,7 @@ class E2LoRaModule():
         return 0
      
     def handle_edge_data_from_legacy(self, dev_id, dev_eui, dev_addr, frame_payload):
-        log.info("Received Edge Frame from legacy route");
+        log.info(f'Received Edge Frame from legacy route. Dev Addr: {dev_addr}');
         self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
         self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
         self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
@@ -263,8 +263,23 @@ class E2LoRaModule():
         return 0
 
     
-    def handle_edge_data(self, data):
+        self.e2l_module.handle_edge_data(
+            gw_id = gw_id,
+            dev_eui = dev_eui,
+            dev_addr = dev_addr,
+            aggregated_data = aggregated_data,
+            delta_time = delta_time
+        )
+    def handle_edge_data(self, gw_id, dev_eui, dev_addr, aggregated_data, delta_time):
+        log.info(f'Received Edge Frame from E2ED. Data: {aggregated_data} Dev Addr: {dev_addr}. Passyng from GW: {gw_id}');
         self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
+        for i in range(len(self.e2gw_ids)):
+            if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
+                continue
+            self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + 1
+            if self.gw_ids[i] == gw_id:
+                self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
+
 
     def start_dashboard_update_loop(self):
         if self.dashboard_rpc_stub is None:
