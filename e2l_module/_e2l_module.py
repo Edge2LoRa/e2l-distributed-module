@@ -77,8 +77,8 @@ class E2LoRaModule():
         # LOG
         self._send_log(LOG_ED, "E2LoRa Module started")
         # Aggregation Utils
-        self.aggregation_function = AVG_ID
-        self.window_size = 5
+        self.aggregation_function = None
+        self.window_size = None
 
     """
         @brief: this function send log to the dashboard
@@ -108,7 +108,7 @@ class E2LoRaModule():
             if(len(self.e2gw_ids) > 0):
                 gw_1_info = self.statistics["gateways"][self.e2gw_ids[0]]
             if(len(self.e2gw_ids) > 1):
-                gw_2_info = self.statistics["gateways"][self.e2ed_ids[1]]
+                gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
             request = SendStatistics(
                 client_id = 1,
                 message_data = "",
@@ -127,7 +127,7 @@ class E2LoRaModule():
 
     def _update_params(self, ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size):
         # UPDATE AGGREGATION PARAMETERS
-        if self.window_size != window_size or self.aggregation_function != aggregation_function:
+        if self.window_size is None or self.aggregation_function is None or self.window_size != window_size or self.aggregation_function != aggregation_function:
             self.window_size = window_size
             self.aggregation_function = aggregation_function
             for e2gw_id in self.e2gw_ids:
@@ -138,15 +138,17 @@ class E2LoRaModule():
                 )
                 gw_stub.update_aggregation_params(new_aggregation_params)
         
-        rejoin_command_base64 = base64.b64encode(REJOIN_COMMAND.encode('utf-8'))
+        rejoin_command_base64 = base64.b64encode(REJOIN_COMMAND.encode('utf-8')).decode('utf-8')
         # UPDATE ED 1 GW SELECTION
         if len(self.e2gw_ids) >= ed_1_gw_selection and len(self.e2ed_ids) > 0:
+            log.info("Checking ed1 gw change")
             dev_eui = self.e2ed_ids[0]
             new_e2gw_id = self.e2gw_ids[ed_1_gw_selection - 1]
             e2ed_info = self.active_directory["e2eds"].get(dev_eui)
             if e2ed_info is not None:
                 old_e2gw_id = e2ed_info.get("e2gw")
                 if new_e2gw_id != old_e2gw_id:
+                    log.info("Updating ed1 gw")
                     self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
                     dev_id = e2ed_info.get("dev_id")
                     self._send_downlink_frame(
@@ -156,10 +158,13 @@ class E2LoRaModule():
                         priority = "HIGHEST"
                     )
                     old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
-                    e2ed_data = old_e2gw_stub.remove_e2ed(E2LDeviceInfo(
+                    e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
                         dev_eui = dev_eui,
                         dev_addr = e2ed_info.get("dev_addr"),
                     ))
+                    log.info(f'{dev_eui} changed e2gw, completed')
+                    log.info(f'ed data: {e2ed_data}')
+
 
                     
         # UPDATE ED 2 GW SELECTION
@@ -234,7 +239,6 @@ class E2LoRaModule():
             window_size = response.process_window
             self._update_params(ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size)
 
-
     """
         @brief: This function is used to send a downlink frame to a ED.
         @para
@@ -280,6 +284,11 @@ class E2LoRaModule():
         # Init RPC Client
         channel = grpc.insecure_channel(f'{gw_rpc_endpoint_address}:{gw_rpc_endpoint_port}')
         stub = edge2gateway_pb2_grpc.Edge2GatewayStub(channel)
+        new_aggregation_params = AggregationParams(
+            aggregation_function = self.aggregation_function,
+            window_size = self.window_size
+        )
+        stub.update_aggregation_params(new_aggregation_params)
 
         self.active_directory["e2gws"][gw_rpc_endpoint_address] = {
             "gw_rpc_endpoint_address": gw_rpc_endpoint_address,
