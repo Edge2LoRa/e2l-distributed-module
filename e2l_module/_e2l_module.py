@@ -4,7 +4,7 @@ import time
 from Crypto.PublicKey import ECC
 import logging
 import grpc
-from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo
+from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo, AggregationParams, E2LDeviceInfo , GwResponse
 from .__private__ import demo_pb2_grpc, SendStatistics, SendLogMessage
 import json
 import hashlib
@@ -19,10 +19,25 @@ else:
 
 log = logging.getLogger(__name__)
 
+### LORAWAN PORTS
+DEFAULT_APP_PORT=2
+DEFAULT_E2L_JOIN_PORT=3
+DEFAULT_E2L_APP_PORT=4
+DEFAULT_E2L_COMMAND_PORT=5
+
+# EDGE2LORA COMMAND
+REJOIN_COMMAND = "REJOIN"
+
+# LOG TYPE
 LOG_ED=1
 LOG_GW=2
 LOG_DM=3
 
+# AGGREGATION FUNCTION TYPE
+AVG_ID=1
+SUM_ID=2
+MIN_ID=3
+MAX_ID=4
 
 class E2LoRaModule():
     """
@@ -55,17 +70,21 @@ class E2LoRaModule():
             # self.dashboard_rpc_stub = None
         except:
             self.dashboard_rpc_stub = None
-        
+        # MQTT CLIENT
+        self.mqtt_client = None
         # LOG UTILS
         self.gw_log = None
         # LOG
         self._send_log(LOG_ED, "E2LoRa Module started")
+        # Aggregation Utils
+        self.aggregation_function = AVG_ID
+        self.window_size = 5
 
-    '''
+    """
         @brief: this function send log to the dashboard
         @param type: log type <LOG_ED|LOG_GW|LOG_DM>
         @param message: log message
-    '''
+    """
     def _send_log(self, type, message):
         if self.dashboard_rpc_stub is None:
             return
@@ -78,8 +97,12 @@ class E2LoRaModule():
         )
         self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
 
+    """
+        @brief  This function collect the stats and return a SendStatistics object
+        @return The updated SendStatistics object
+    """
     def _get_stats(self):
-        for i in range(10):
+        for i in range(1):
             gw_1_info = {}
             gw_2_info = {}
             if(len(self.e2gw_ids) > 0):
@@ -99,24 +122,128 @@ class E2LoRaModule():
                 aggregation_function_result = self.statistics.get("rx_e2l_frames", 0)
             )
             yield request
-            time.sleep(5)
+            # time.sleep(5)
 
+
+    def _update_params(self, ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size):
+        # UPDATE AGGREGATION PARAMETERS
+        if self.window_size != window_size or self.aggregation_function != aggregation_function:
+            self.window_size = window_size
+            self.aggregation_function = aggregation_function
+            for e2gw_id in self.e2gw_ids:
+                gw_stub = self.active_directory["e2gws"].get(e2gw_id).get("e2gw_stub")
+                new_aggregation_params = AggregationParams(
+                    aggregation_function = aggregation_function,
+                    window_size = window_size
+                )
+                gw_stub.update_aggregation_params(new_aggregation_params)
+        
+        rejoin_command_base64 = base64.b64encode(REJOIN_COMMAND.encode('utf-8'))
+        # UPDATE ED 1 GW SELECTION
+        if len(self.e2gw_ids) >= ed_1_gw_selection and len(self.e2ed_ids) > 0:
+            dev_eui = self.e2ed_ids[0]
+            new_e2gw_id = self.e2gw_ids[ed_1_gw_selection - 1]
+            e2ed_info = self.active_directory["e2eds"].get(dev_eui)
+            if e2ed_info is not None:
+                old_e2gw_id = e2ed_info.get("e2gw")
+                if new_e2gw_id != old_e2gw_id:
+                    self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
+                    dev_id = e2ed_info.get("dev_id")
+                    self._send_downlink_frame(
+                        base64_message = rejoin_command_base64,
+                        dev_id = dev_id,
+                        lorawan_port = DEFAULT_E2L_COMMAND_PORT,
+                        priority = "HIGHEST"
+                    )
+                    old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
+                    e2ed_data = old_e2gw_stub.remove_e2ed(E2LDeviceInfo(
+                        dev_eui = dev_eui,
+                        dev_addr = e2ed_info.get("dev_addr"),
+                    ))
+
+                    
+        # UPDATE ED 2 GW SELECTION
+        if len(self.e2gw_ids) >= ed_2_gw_selection and len(self.e2ed_ids) > 1:
+            dev_eui = self.e2ed_ids[1]
+            new_e2gw_id = self.e2gw_ids[ed_2_gw_selection - 1]
+            e2ed_info = self.active_directory["e2eds"].get(dev_eui)
+            if e2ed_info is not None:
+                old_e2gw_id = e2ed_info.get("e2gw")
+                if new_e2gw_id != old_e2gw_id:
+                    self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
+                    dev_id = e2ed_info.get("dev_id")
+                    self._send_downlink_frame(
+                        base64_message = rejoin_command_base64,
+                        dev_id = dev_id,
+                        lorawan_port = DEFAULT_E2L_COMMAND_PORT,
+                        priority = "HIGHEST"
+                    )
+                    old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
+                    e2ed_data = old_e2gw_stub.remove_e2ed(E2LDeviceInfo(
+                        dev_eui = dev_eui,
+                        dev_addr = e2ed_info.get("dev_addr"),
+                    ))
+                    log.info(f'{dev_eui} changed e2gw, completed')
+                    
+        # UPDATE ED 3 GW SELECTION
+        if len(self.e2gw_ids) >= ed_3_gw_selection and len(self.e2ed_ids) > 2:
+            dev_eui = self.e2ed_ids[2]
+            new_e2gw_id = self.e2gw_ids[ed_3_gw_selection - 1]
+            e2ed_info = self.active_directory["e2eds"].get(dev_eui)
+            if e2ed_info is not None:
+                old_e2gw_id = e2ed_info.get("e2gw")
+                if new_e2gw_id != old_e2gw_id:
+                    self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
+                    dev_id = e2ed_info.get("dev_id")
+                    self._send_downlink_frame(
+                        base64_message = rejoin_command_base64,
+                        dev_id = dev_id,
+                        lorawan_port = DEFAULT_E2L_COMMAND_PORT,
+                        priority = "HIGHEST"
+                    )
+                    old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
+                    e2ed_data = old_e2gw_stub.remove_e2ed(E2LDeviceInfo(
+                        dev_eui = dev_eui,
+                        dev_addr = e2ed_info.get("dev_addr"),
+                    ))
+                    
+    """
+        @brief  This function is used to periodically send the stats to the dashboard.
+        @return None
+    """
     def _update_dashboard(self):
         while(True):
             time.sleep(5)
             log.info("Sending statistics to dashboard")
-            self.dashboard_rpc_stub.ClientStreamingMethodStatistics(self._get_stats())
+            response = self.dashboard_rpc_stub.ClientStreamingMethodStatistics(self._get_stats())
+            ed_1_gw_selection = response.ed_1_gw_selection
+            ed_2_gw_selection = response.ed_2_gw_selection
+            ed_3_gw_selection = response.ed_3_gw_selection
+            aggregation_function_str = response.process_function
+            aggregation_function = AVG_ID
+            if aggregation_function_str == "mean":
+                aggregation_function = AVG_ID
+            elif aggregation_function_str == "sum":
+                aggregation_function = SUM_ID
+            elif aggregation_function_str == "min":
+                aggregation_function = MIN_ID
+            elif aggregation_function_str == "max":
+                aggregation_function = MAX_ID
+            else:
+                log.error("Unknown aggregation function. Setting to AVG.")
+            window_size = response.process_window
+            self._update_params(ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size)
 
 
     """
         @brief: This function is used to send a downlink frame to a ED.
         @para
     """
-    def _send_downlink_frame(self, mqtt_client, base64_message, dev_id, priority = "HIGHEST"):
+    def _send_downlink_frame(self, base64_message, dev_id, lorawan_port = 3, priority = "HIGHEST"):
         downlink_frame = {
             "downlinks": [
                 {
-                    "f_port": 3,
+                    "f_port": lorawan_port,
                     "frm_payload": base64_message,
                     "priority": priority
                 }
@@ -127,12 +254,13 @@ class E2LoRaModule():
         base_topic = os.getenv('MQTT_BASE_TOPIC')
         topic = f'{base_topic}{dev_id}/down/replace'
         
-        res = mqtt_client.publish_to_topic(
+        res = self.mqtt_client.publish_to_topic(
             topic = topic,
             message = downlink_frame_str
         )
 
         return downlink_frame
+
     """
         @brief  This funciont handle new public key info received by a GW.
                 It initialize a RPC client for each GW.
@@ -184,20 +312,29 @@ class E2LoRaModule():
         @error code:
             -1: Error 
     """
-    def handle_edge_join_request(self, dev_id, dev_eui, dev_addr, dev_pub_key_compressed_base_64, mqtt_client):
+    def handle_edge_join_request(self, dev_id, dev_eui, dev_addr, dev_pub_key_compressed_base_64):
 
-        # Assign E2GW to E2ED and store informations
-        e2gw = self.active_directory["e2gws"].get(list(self.active_directory["e2gws"].keys())[0])
-        if e2gw is None:
-            log.error("No E2GW found")
-            return -1
-
-        dev_obj = {
-            "dev_id": dev_id,
-            "dev_eui": dev_eui,
-            "dev_addr": dev_addr,
-            "e2gw": e2gw.get("gw_rpc_endpoint_address"),
-        }
+        dev_obj = None
+        e2gw = None
+        # Check if ED is already registered
+        if self.active_directory["e2eds"].get(dev_eui) is None:
+            # Assign E2GW to E2ED and store informations
+            e2gw = self.active_directory["e2gws"].get(list(self.active_directory["e2gws"].keys())[0])
+            if e2gw is None:
+                log.error("No E2GW found")
+                return -1
+            dev_obj = {
+                "dev_id": dev_id,
+                "dev_eui": dev_eui,
+                "dev_addr": dev_addr,
+                "e2gw": e2gw.get("gw_rpc_endpoint_address"),
+            }
+        else:
+            dev_obj = self.active_directory["e2eds"].get(dev_eui)
+            e2gw = self.active_directory["e2gws"].get(dev_obj.get("e2gw"))
+            if e2gw is None:
+                log.error("No E2GW found")
+                return -1
         # Get g_as_gw
         g_as_gw = e2gw.get("g_as_gw")
         # Schedule downlink to ed with g_as_gw
@@ -205,7 +342,6 @@ class E2LoRaModule():
         g_as_gw_exported = g_as_gw.export_key(format="SEC1")
         g_as_gw_base_64 = base64.b64encode(g_as_gw_exported).decode('utf-8')
         _downlink_frame = self._send_downlink_frame(
-            mqtt_client=mqtt_client,
             base64_message = g_as_gw_base_64, 
             dev_id = dev_id
             )
@@ -242,14 +378,30 @@ class E2LoRaModule():
             self.e2ed_ids.append(dev_eui)
 
         return 0
-     
+
+    """
+        @brief  This function handle new edge frame received by an ED, passing by the legacy route.
+        @param dev_id: The Dev ID as in TTS.
+        @param dev_eui: The Dev EUI.
+        @param dev_addr: The Dev Addr.
+        @param frame_payload: The Frame Payload.
+        @return: 0 is success, < 0 if failure.
+    """ 
     def handle_edge_data_from_legacy(self, dev_id, dev_eui, dev_addr, frame_payload):
-        log.info(f'Received Edge Frame from legacy route. Dev Addr: {dev_addr}');
-        self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
-        self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
-        self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
+        # log.info(f'Received Edge Frame from legacy route. Dev Addr: {dev_addr}');
+        # self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
+        # self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
+        # self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
         return 0
         
+    """
+        @brief  This function handle new legacy frame received by an ED, passing by the legacy route.
+        @param dev_id: The Dev ID as in TTS.
+        @param dev_eui: The Dev EUI.
+        @param dev_addr: The Dev Addr.
+        @param frame_payload: The Frame Payload.
+        @return: 0 is success, < 0 if failure.
+    """
     def handle_legacy_data(self, dev_id, dev_eui, dev_addr, frame_payload):
         log.info(f'Received Legacy Frame from Legacy Route.');
         self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
@@ -262,27 +414,40 @@ class E2LoRaModule():
             self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
         return 0
 
-    
-        self.e2l_module.handle_edge_data(
-            gw_id = gw_id,
-            dev_eui = dev_eui,
-            dev_addr = dev_addr,
-            aggregated_data = aggregated_data,
-            delta_time = delta_time
-        )
+    """
+        @brief  This function handle new edge frame received by an ED, passing by the E2ED route.
+        @param gw_id: The GW ID.
+        @param dev_eui: The Dev EUI.
+        @param dev_addr: The Dev Addr.
+        @param aggregated_data: The Aggregated Data.
+        @param delta_time: The Delta Time.
+        @return: 0 is success, < 0 if failure.
+    """
     def handle_edge_data(self, gw_id, dev_eui, dev_addr, aggregated_data, delta_time):
         log.info(f'Received Edge Frame from E2ED. Data: {aggregated_data} Dev Addr: {dev_addr}. Passyng from GW: {gw_id}');
         self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
         for i in range(len(self.e2gw_ids)):
             if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
                 continue
-            self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + 1
-            if self.gw_ids[i] == gw_id:
+            self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + self.window_size
+            if self.e2gw_ids[i] == gw_id:
                 self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
+        return 0
 
-
+    """
+        @brief  Thid function start a thread to handle the dashboard update loop.
+        @return: None.
+    """
     def start_dashboard_update_loop(self):
         if self.dashboard_rpc_stub is None:
             return
         self.dashboard_update_loop = Thread(target=self._update_dashboard)
         self.dashboard_update_loop.start()
+
+    """
+        @brief  This function set the mqtt client object.
+        @param mqtt_client: The mqtt client object.
+        @return: None.
+    """
+    def set_mqtt_client(self, mqtt_client):
+        self.mqtt_client = mqtt_client

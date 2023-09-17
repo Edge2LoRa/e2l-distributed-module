@@ -13,7 +13,7 @@ from mqtt_module import MQTTModule
 import json
 import base64
 
-from e2l_module import E2LoRaModule
+from e2l_module import (E2LoRaModule, DEFAULT_APP_PORT, DEFAULT_E2L_APP_PORT, DEFAULT_E2L_JOIN_PORT)
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -25,13 +25,6 @@ else:
     logging.basicConfig(level=logging.INFO)
 
 log = logging.getLogger(__name__)
-
-
-### GLOBAL VARIABLES ###
-DEFAULT_APP_PORT=2
-DEFAULT_E2L_JOIN_PORT=3
-DEFAULT_E2L_APP_PORT=4
-
 
 """
     @brief: This function is used to check if the environment variables are set.
@@ -85,8 +78,7 @@ def subscribe_callback(client, userdata, message):
             dev_id = dev_id,
             dev_eui = dev_eui,
             dev_addr = dev_addr,
-            dev_pub_key_compressed_base_64 = frame_payload, 
-            mqtt_client = client)
+            dev_pub_key_compressed_base_64 = frame_payload)
     elif up_port == DEFAULT_E2L_APP_PORT:
         log.debug("Received Edge Frame")
         ret = client.e2l_module.handle_edge_data_from_legacy(dev_id, dev_eui, dev_addr, frame_payload)
@@ -144,6 +136,9 @@ if __name__ == '__main__':
     log.debug(f"Subscribing to MQTT topic {topic}...")
     mqqt_client.subscribe_to_topic(topic=topic, callback=subscribe_callback)
     log.debug(f"Subscribed to MQTT topic {topic}")
+
+    # PASS MQTT CLIENT TO E2L MODULE
+    e2l_module.set_mqtt_client(mqqt_client)
 
     log.info("Waiting for messages from MQTT broker...")
     mqqt_client.wait_for_message()
