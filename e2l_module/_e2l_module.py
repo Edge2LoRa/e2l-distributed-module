@@ -141,14 +141,12 @@ class E2LoRaModule():
         rejoin_command_base64 = base64.b64encode(REJOIN_COMMAND.encode('utf-8')).decode('utf-8')
         # UPDATE ED 1 GW SELECTION
         if len(self.e2gw_ids) >= ed_1_gw_selection and len(self.e2ed_ids) > 0:
-            log.info("Checking ed1 gw change")
             dev_eui = self.e2ed_ids[0]
             new_e2gw_id = self.e2gw_ids[ed_1_gw_selection - 1]
             e2ed_info = self.active_directory["e2eds"].get(dev_eui)
             if e2ed_info is not None:
                 old_e2gw_id = e2ed_info.get("e2gw")
                 if new_e2gw_id != old_e2gw_id:
-                    log.info("Updating ed1 gw")
                     self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
                     dev_id = e2ed_info.get("dev_id")
                     self._send_downlink_frame(
@@ -162,8 +160,6 @@ class E2LoRaModule():
                         dev_eui = dev_eui,
                         dev_addr = e2ed_info.get("dev_addr"),
                     ))
-                    log.info(f'{dev_eui} changed e2gw, completed')
-                    log.info(f'ed data: {e2ed_data}')
 
 
                     
@@ -184,11 +180,10 @@ class E2LoRaModule():
                         priority = "HIGHEST"
                     )
                     old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
-                    e2ed_data = old_e2gw_stub.remove_e2ed(E2LDeviceInfo(
+                    e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
                         dev_eui = dev_eui,
                         dev_addr = e2ed_info.get("dev_addr"),
                     ))
-                    log.info(f'{dev_eui} changed e2gw, completed')
                     
         # UPDATE ED 3 GW SELECTION
         if len(self.e2gw_ids) >= ed_3_gw_selection and len(self.e2ed_ids) > 2:
@@ -207,7 +202,7 @@ class E2LoRaModule():
                         priority = "HIGHEST"
                     )
                     old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
-                    e2ed_data = old_e2gw_stub.remove_e2ed(E2LDeviceInfo(
+                    e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
                         dev_eui = dev_eui,
                         dev_addr = e2ed_info.get("dev_addr"),
                     ))
