@@ -91,7 +91,9 @@ class E2LoRaModule():
             key_agreement_message_log = message,
             key_agreement_process_time = 0,
         )
-        self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
+        log.info(f'Sending log to dashboard: {type}\t{message}')
+        response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
+        log.info(response)
 
     """
         @brief  This function collect the stats and return a SendStatistics object
@@ -339,7 +341,7 @@ class E2LoRaModule():
     """
     def handle_edge_join_request(self, dev_id, dev_eui, dev_addr, dev_pub_key_compressed_base_64):
         # SEND LOG
-        if len(self.e2ed_ids) < 1 or self.e2ed_ids.index(dev_eui) == 0:
+        if len(self.e2ed_ids) < 1 or (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
             self._send_log(type=LOG_ED, message=f'Starting Edge Join')
 
         dev_obj = None
@@ -364,7 +366,7 @@ class E2LoRaModule():
                 log.error("No E2GW found")
                 return -1
         # SEND LOG
-        if len(self.e2ed_ids) < 1 or self.e2ed_ids.index(dev_eui) == 0:
+        if len(self.e2ed_ids) < 1 or  (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
             self._send_log(type=LOG_ED, message=f'Send EdgeJoinRequest')
         # Get g_as_gw
         g_as_gw = e2gw.get("g_as_gw")
@@ -377,7 +379,7 @@ class E2LoRaModule():
             dev_id = dev_id
             )
         # SEND LOG
-        if len(self.e2ed_ids) < 1 or self.e2ed_ids.index(dev_eui) == 0:
+        if len(self.e2ed_ids) < 1 or  (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
             self._send_log(type=LOG_ED, message=f'Received EdgeAcceptRequest')
 
         # Generate g_as_ed
