@@ -29,9 +29,9 @@ DEFAULT_E2L_COMMAND_PORT=5
 REJOIN_COMMAND = "REJOIN"
 
 # LOG TYPE
-LOG_ED=1
-LOG_GW=2
-LOG_DM=3
+LOG_GW1=1
+LOG_GW2=2
+LOG_ED=3
 
 # AGGREGATION FUNCTION TYPE
 AVG_ID=1
@@ -72,17 +72,13 @@ class E2LoRaModule():
             self.dashboard_rpc_stub = None
         # MQTT CLIENT
         self.mqtt_client = None
-        # LOG UTILS
-        self.gw_log = None
-        # LOG
-        self._send_log(LOG_ED, "E2LoRa Module started")
         # Aggregation Utils
         self.aggregation_function = None
         self.window_size = None
 
     """
         @brief: this function send log to the dashboard
-        @param type: log type <LOG_ED|LOG_GW|LOG_DM>
+        @param type: log type <LOG_GW1|LOG_GW2|LOG_ED>
         @param message: log message
     """
     def _send_log(self, type, message):
@@ -124,7 +120,17 @@ class E2LoRaModule():
             yield request
             # time.sleep(5)
 
-
+    """
+        @brief: This function updated the paramenters according to the settings of the dashboard.
+                It can trigger a change in the aggregation function and window size of the gateways, or
+                change the E2GW for the E2EDs.
+        @param ed_1_gw_selection: the gateway index to be used for the first E2ED
+        @param ed_2_gw_selection: the gateway index to be used for the second E2ED
+        @param ed_3_gw_selection: the gateway index to be used for the third E2ED
+        @param aggregation_function: the aggregation function to be used for the gateways
+        @param window_size: the window size to be used for the gateways
+        @return: None
+    """
     def _update_params(self, ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size):
         # UPDATE AGGREGATION PARAMETERS
         if self.window_size is None or self.aggregation_function is None or self.window_size != window_size or self.aggregation_function != aggregation_function:
@@ -208,7 +214,7 @@ class E2LoRaModule():
                     ))
                     
     """
-        @brief  This function is used to periodically send the stats to the dashboard.
+        @brief  This function is used to periodically send the stats to the dashboard, and get the new settings.
         @return None
     """
     def _update_dashboard(self):
@@ -235,8 +241,12 @@ class E2LoRaModule():
             self._update_params(ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size)
 
     """
-        @brief: This function is used to send a downlink frame to a ED.
-        @para
+        @brief  This function is used to send a downlink frame to a ED.
+        @param   base64_message: The frame payload to be sent encoded in base64.
+        @param   dev_id: The device ID of the ED as in TTS.
+        @param   lorawan_port: The port of the ED. (default: 3)
+        @param   priority: The priority of the frame. (default: HIGHEST)
+        @return   0 is success, < 0 if failure.
     """
     def _send_downlink_frame(self, base64_message, dev_id, lorawan_port = 3, priority = "HIGHEST"):
         downlink_frame = {
@@ -258,7 +268,7 @@ class E2LoRaModule():
             message = downlink_frame_str
         )
 
-        return downlink_frame
+        return 0
 
     """
         @brief  This funciont handle new public key info received by a GW.
@@ -297,13 +307,24 @@ class E2LoRaModule():
                 "rx": 0,
                 "tx": 0
             }
+        log_type = None
+        log_message = ''
         if gw_rpc_endpoint_address not in self.e2gw_ids:
             self.e2gw_ids.append(gw_rpc_endpoint_address)
-        if self.gw_log is None:
-            self.gw_log = gw_rpc_endpoint_address
-        log.info(f'E2GW {gw_rpc_endpoint_address} is added to active directory')
-        if self.gw_log == gw_rpc_endpoint_address:
-            self._send_log(LOG_GW, f'Ephimeral E2GW ECC key pair received')
+            log_message = f'Added GW info in DM active directory'
+        else: 
+            log_message = f'Updated GW info in DM active directory'
+        # SEND LOG
+        index = self.e2gw_ids.index(gw_rpc_endpoint_address)
+        log_type = None
+        if index == 0:
+            log_type = LOG_GW1
+        elif index == 1:
+            log_type = LOG_GW2
+        else: 
+            log_type = None
+        if log_type is not None:
+            self._send_log(type=log_type, message=log_message)
         return 0
 
     """
@@ -317,6 +338,9 @@ class E2LoRaModule():
             -1: Error 
     """
     def handle_edge_join_request(self, dev_id, dev_eui, dev_addr, dev_pub_key_compressed_base_64):
+        # SEND LOG
+        if len(self.e2ed_ids) < 1 or self.e2ed_ids.index(dev_eui) == 0:
+            self._send_log(type=LOG_ED, message=f'Starting Edge Join')
 
         dev_obj = None
         e2gw = None
@@ -339,6 +363,9 @@ class E2LoRaModule():
             if e2gw is None:
                 log.error("No E2GW found")
                 return -1
+        # SEND LOG
+        if len(self.e2ed_ids) < 1 or self.e2ed_ids.index(dev_eui) == 0:
+            self._send_log(type=LOG_ED, message=f'Send EdgeJoinRequest')
         # Get g_as_gw
         g_as_gw = e2gw.get("g_as_gw")
         # Schedule downlink to ed with g_as_gw
@@ -349,6 +376,9 @@ class E2LoRaModule():
             base64_message = g_as_gw_base_64, 
             dev_id = dev_id
             )
+        # SEND LOG
+        if len(self.e2ed_ids) < 1 or self.e2ed_ids.index(dev_eui) == 0:
+            self._send_log(type=LOG_ED, message=f'Received EdgeAcceptRequest')
 
         # Generate g_as_ed
         # Decode base64
@@ -365,6 +395,17 @@ class E2LoRaModule():
         g_gw_ed = ECC.import_key(g_gw_ed_bytes, curve_name='P-256')
         edgeSKey_int = self.ephimeral_private_key.d * g_gw_ed.pointQ
         edgeSKey = edgeSKey_int.x.to_bytes()
+        # SEND LOG
+        index = self.e2gw_ids.index(e2gw.get("gw_rpc_endpoint_address"))
+        log_type = None
+        if index == 0:
+            log_type = LOG_GW1
+        elif index == 1:
+            log_type = LOG_GW2
+        else: 
+            log_type = None
+        if log_type is not None:
+            self._send_log(type=log_type, message=f'Received Device {dev_addr} Public Info')
 
         # Hash edgeSKey
         edgeSIntKey = b'\x00' + edgeSKey
@@ -380,6 +421,12 @@ class E2LoRaModule():
         self.active_directory["e2eds"][dev_eui] = dev_obj
         if dev_eui not in self.e2ed_ids:
             self.e2ed_ids.append(dev_eui)
+        
+        # SEND LOG
+        if self.e2ed_ids.index(dev_eui) == 0:
+            self._send_log(type=LOG_ED, message=f'Edge Join Completed')
+        if log_type is not None:
+            self._send_log(type=log_type, message=f'Edge Join Completed')
 
         return 0
 
@@ -436,6 +483,11 @@ class E2LoRaModule():
             self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + self.window_size
             if self.e2gw_ids[i] == gw_id:
                 self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
+
+        # SEND LOG
+        if self.e2ed_ids.index(dev_eui) == 0:
+            self._send_log(type=LOG_ED, message=f'E2L Frame Received by DM')
+
         return 0
 
     """
