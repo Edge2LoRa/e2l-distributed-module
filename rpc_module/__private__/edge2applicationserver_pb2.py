@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1c\x65\x64ge2applicationserver.proto\x12\x16\x65\x64ge2applicationserver\"7\n\x0fResponseMessage\x12\x13\n\x0bstatus_code\x18\x01 \x01(\x11\x12\x0f\n\x07message\x18\x02 \x01(\x0c\"J\n\re2gw_pub_info\x12\x12\n\ngw_ip_addr\x18\x01 \x01(\t\x12\x0f\n\x07gw_port\x18\x02 \x01(\t\x12\x14\n\x0c\x65\x32gw_pub_key\x18\x03 \x01(\x0c\"/\n\x0eNewDataRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07timetag\x18\x02 \x01(\x04\"\"\n\x0fNewDataResponse\x12\x0f\n\x07message\x18\x01 \x01(\t2\xdc\x01\n\x16\x45\x64ge2ApplicationServer\x12[\n\x08new_data\x12&.edge2applicationserver.NewDataRequest\x1a\'.edge2applicationserver.NewDataResponse\x12\x65\n\x13store_e2gw_pub_info\x12%.edge2applicationserver.e2gw_pub_info\x1a\'.edge2applicationserver.ResponseMessageB:\n\x1dio.grpc.examples.edge2lorarpcB\x11\x45\x64ge2LoRaRPCProtoP\x01\xa2\x02\x03\x45\x32Lb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1c\x65\x64ge2applicationserver.proto\x12\x16\x65\x64ge2applicationserver\"7\n\x0fResponseMessage\x12\x13\n\x0bstatus_code\x18\x01 \x01(\x11\x12\x0f\n\x07message\x18\x02 \x01(\t\"H\n\x0b\x45\x32GWPubInfo\x12\x12\n\ngw_ip_addr\x18\x01 \x01(\t\x12\x0f\n\x07gw_port\x18\x02 \x01(\t\x12\x14\n\x0c\x65\x32gw_pub_key\x18\x03 \x01(\x0c\"f\n\x08\x45\x64geData\x12\r\n\x05gw_id\x18\x01 \x01(\t\x12\x0f\n\x07\x64\x65v_eui\x18\x02 \x01(\t\x12\x10\n\x08\x64\x65v_addr\x18\x03 \x01(\t\x12\x17\n\x0f\x61ggregated_data\x18\x04 \x01(\x12\x12\x0f\n\x07timetag\x18\x05 \x01(\x04\x32\xd4\x01\n\x16\x45\x64ge2ApplicationServer\x12U\n\x08new_data\x12 .edge2applicationserver.EdgeData\x1a\'.edge2applicationserver.ResponseMessage\x12\x63\n\x13store_e2gw_pub_info\x12#.edge2applicationserver.E2GWPubInfo\x1a\'.edge2applicationserver.ResponseMessageB:\n\x1dio.grpc.examples.edge2lorarpcB\x11\x45\x64ge2LoRaRPCProtoP\x01\xa2\x02\x03\x45\x32Lb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -24,12 +24,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._serialized_options = b'\n\035io.grpc.examples.edge2lorarpcB\021Edge2LoRaRPCProtoP\001\242\002\003E2L'
   _globals['_RESPONSEMESSAGE']._serialized_start=56
   _globals['_RESPONSEMESSAGE']._serialized_end=111
-  _globals['_E2GW_PUB_INFO']._serialized_start=113
-  _globals['_E2GW_PUB_INFO']._serialized_end=187
-  _globals['_NEWDATAREQUEST']._serialized_start=189
-  _globals['_NEWDATAREQUEST']._serialized_end=236
-  _globals['_NEWDATARESPONSE']._serialized_start=238
-  _globals['_NEWDATARESPONSE']._serialized_end=272
-  _globals['_EDGE2APPLICATIONSERVER']._serialized_start=275
-  _globals['_EDGE2APPLICATIONSERVER']._serialized_end=495
+  _globals['_E2GWPUBINFO']._serialized_start=113
+  _globals['_E2GWPUBINFO']._serialized_end=185
+  _globals['_EDGEDATA']._serialized_start=187
+  _globals['_EDGEDATA']._serialized_end=289
+  _globals['_EDGE2APPLICATIONSERVER']._serialized_start=292
+  _globals['_EDGE2APPLICATIONSERVER']._serialized_end=504
 # @@protoc_insertion_point(module_scope)

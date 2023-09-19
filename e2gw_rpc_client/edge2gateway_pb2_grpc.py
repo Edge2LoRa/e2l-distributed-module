@@ -19,12 +19,34 @@ class Edge2GatewayStub(object):
                 request_serializer=edge2gateway__pb2.EdPubInfo.SerializeToString,
                 response_deserializer=edge2gateway__pb2.GwInfo.FromString,
                 )
+        self.update_aggregation_params = channel.unary_unary(
+                '/edge2gateway.Edge2Gateway/update_aggregation_params',
+                request_serializer=edge2gateway__pb2.AggregationParams.SerializeToString,
+                response_deserializer=edge2gateway__pb2.GwResponse.FromString,
+                )
+        self.remove_e2device = channel.unary_unary(
+                '/edge2gateway.Edge2Gateway/remove_e2device',
+                request_serializer=edge2gateway__pb2.E2LDeviceInfo.SerializeToString,
+                response_deserializer=edge2gateway__pb2.E2LData.FromString,
+                )
 
 
 class Edge2GatewayServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def handle_ed_pub_info(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def update_aggregation_params(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def remove_e2device(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -37,6 +59,16 @@ def add_Edge2GatewayServicer_to_server(servicer, server):
                     servicer.handle_ed_pub_info,
                     request_deserializer=edge2gateway__pb2.EdPubInfo.FromString,
                     response_serializer=edge2gateway__pb2.GwInfo.SerializeToString,
+            ),
+            'update_aggregation_params': grpc.unary_unary_rpc_method_handler(
+                    servicer.update_aggregation_params,
+                    request_deserializer=edge2gateway__pb2.AggregationParams.FromString,
+                    response_serializer=edge2gateway__pb2.GwResponse.SerializeToString,
+            ),
+            'remove_e2device': grpc.unary_unary_rpc_method_handler(
+                    servicer.remove_e2device,
+                    request_deserializer=edge2gateway__pb2.E2LDeviceInfo.FromString,
+                    response_serializer=edge2gateway__pb2.E2LData.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -62,5 +94,39 @@ class Edge2Gateway(object):
         return grpc.experimental.unary_unary(request, target, '/edge2gateway.Edge2Gateway/handle_ed_pub_info',
             edge2gateway__pb2.EdPubInfo.SerializeToString,
             edge2gateway__pb2.GwInfo.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def update_aggregation_params(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/edge2gateway.Edge2Gateway/update_aggregation_params',
+            edge2gateway__pb2.AggregationParams.SerializeToString,
+            edge2gateway__pb2.GwResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def remove_e2device(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/edge2gateway.Edge2Gateway/remove_e2device',
+            edge2gateway__pb2.E2LDeviceInfo.SerializeToString,
+            edge2gateway__pb2.E2LData.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

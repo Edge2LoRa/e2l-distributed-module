@@ -13,7 +13,7 @@ from mqtt_module import MQTTModule
 import json
 import base64
 
-from e2l_module import E2LoRaModule
+from e2l_module import (E2LoRaModule, DEFAULT_APP_PORT, DEFAULT_E2L_APP_PORT, DEFAULT_E2L_JOIN_PORT)
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -26,13 +26,6 @@ else:
 
 log = logging.getLogger(__name__)
 
-
-### GLOBAL VARIABLES ###
-DEFAULT_APP_PORT=2
-DEFAULT_E2L_JOIN_PORT=3
-DEFAULT_E2L_APP_PORT=4
-
-
 """
     @brief: This function is used to check if the environment variables are set.
     @return: True if all environment variables are set, False otherwise.
@@ -41,7 +34,7 @@ DEFAULT_E2L_APP_PORT=4
 def check_env_vars() -> bool:
     env_vars = [
         'MQTT_USERNAME', 'MQTT_PASSWORD', 'MQTT_HOST', 'MQTT_PORT',
-        'MQTT_TOPIC', 'MQTT_BASE_TOPIC'
+        'MQTT_TOPIC', 'MQTT_BASE_TOPIC', "DASHBOARD_RPC_HOST", "DASHBOARD_RPC_PORT",
     ]
     for var in env_vars:
         if os.getenv(var) is None:
@@ -78,18 +71,17 @@ def subscribe_callback(client, userdata, message):
     ret = 0
     if up_port == DEFAULT_APP_PORT:
         log.debug("Received Legacy Frame")
-        # legacy_callback(payload)
+        return client.e2l_module.handle_legacy_data(dev_id, dev_eui, dev_addr, frame_payload)
     elif up_port == DEFAULT_E2L_JOIN_PORT:
         log.debug("Received Edge Join Frame")
         ret = client.e2l_module.handle_edge_join_request(
             dev_id = dev_id,
             dev_eui = dev_eui,
             dev_addr = dev_addr,
-            dev_pub_key_compressed_base_64 = frame_payload, 
-            mqtt_client = client)
+            dev_pub_key_compressed_base_64 = frame_payload)
     elif up_port == DEFAULT_E2L_APP_PORT:
         log.debug("Received Edge Frame")
-        ret = client.e2l_module.handle_edge_data_from_legacy(dev_eui, dev_addr, frame_payload)
+        ret = client.e2l_module.handle_edge_data_from_legacy(dev_id, dev_eui, dev_addr, frame_payload)
     else:
         log.warning(f"Unknown frame port: {up_port}")
     
@@ -112,7 +104,9 @@ if __name__ == '__main__':
     #####################
     #   INIT E2L MODULE #
     #####################
-    e2l_module = E2LoRaModule()
+    dashboard_rpc_endpoint = f'{os.getenv("DASHBOARD_RPC_HOST")}:{os.getenv("DASHBOARD_RPC_PORT")}'
+    e2l_module = E2LoRaModule(dashboard_rpc_endpoint=dashboard_rpc_endpoint)
+    e2l_module.start_dashboard_update_loop()
 
     #####################
     #   INIT RPC SERVER #
@@ -142,6 +136,9 @@ if __name__ == '__main__':
     log.debug(f"Subscribing to MQTT topic {topic}...")
     mqqt_client.subscribe_to_topic(topic=topic, callback=subscribe_callback)
     log.debug(f"Subscribed to MQTT topic {topic}")
+
+    # PASS MQTT CLIENT TO E2L MODULE
+    e2l_module.set_mqtt_client(mqqt_client)
 
     log.info("Waiting for messages from MQTT broker...")
     mqqt_client.wait_for_message()
