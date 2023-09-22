@@ -57,3 +57,12 @@ class Edge2LoRaApplicationServer(edge2applicationserver_pb2_grpc.Edge2Applicatio
         )
 
         return ResponseMessage(status_code=0, message="OK")
+
+    def gw_log(self, request, context):
+        gw_id = request.gw_id
+        dev_addr = request.dev_addr
+        log = request.log
+        frame_type = request.frame_type
+        
+        self.e2l_module.handle_gw_log(gw_id = gw_id,dev_addr = dev_addr, log_message = log, frame_type = frame_type)
+        return ResponseMessage(status_code=0, message="OK")

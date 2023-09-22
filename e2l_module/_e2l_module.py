@@ -39,6 +39,10 @@ SUM_ID=2
 MIN_ID=3
 MAX_ID=4
 
+# FRAME TYPES
+EDGE_FRAME = 1
+LEGACY_FRAME = 2
+
 class E2LoRaModule():
     """
     This class is handle the Edge2LoRa Protocol.
@@ -55,14 +59,21 @@ class E2LoRaModule():
         }
         # Statistics collection utils
         self.statistics = {
-            "rx_legacy_frames": 0,
-            "rx_e2l_frames": 0,
+            "dm": {
+                "rx_legacy_frames": 0,
+                "rx_e2l_frames": 0
+            },
             "gateways": {},
-            "rx_ns": 0,
-            "tx_ns": 0
+            "devices": {},
+            "ns": {
+                "tx": 0,
+                "rx": 0
+            },
+            "aggregation_result": 0
         }
         self.e2gw_ids = []
         self.e2ed_ids = []
+        self.ed_ids = []
         # Init RPC Client
         channel = grpc.insecure_channel(dashboard_rpc_endpoint)
         try:
@@ -107,6 +118,8 @@ class E2LoRaModule():
                 gw_1_info = self.statistics["gateways"][self.e2gw_ids[0]]
             if(len(self.e2gw_ids) > 1):
                 gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
+            ns_info = self.statistics.get("ns", {})
+            dm_info = self.statistics.get("dm", {})
             request = SendStatistics(
                 client_id = 1,
                 message_data = "",
@@ -114,10 +127,10 @@ class E2LoRaModule():
                 gw_1_transmitted_frame_num = gw_1_info.get("tx", 0),
                 gw_2_received_frame_num = gw_2_info.get("rx", 0),
                 gw_2_transmitted_frame_num = gw_2_info.get("tx", 0),
-                ns_received_frame_frame_num = self.statistics.get("rx_ns", 0),
-                ns_transmitted_frame_frame_num = self.statistics.get("tx_ns", 0),
-                module_received_frame_frame_num = self.statistics.get("rx_legacy_frames", 0) + self.statistics.get("rx_e2l_frames", 0),
-                aggregation_function_result = self.statistics.get("rx_e2l_frames", 0)
+                ns_received_frame_frame_num = ns_info.get("rx", 0),
+                ns_transmitted_frame_frame_num = ns_info.get("tx", 0),
+                module_received_frame_frame_num = dm_info.get("rx_legacy_frames", 0) + dm_info.get("rx_e2l_frames", 0),
+                aggregation_function_result = self.statistics["aggregation_result"]
             )
             yield request
             # time.sleep(5)
@@ -328,6 +341,29 @@ class E2LoRaModule():
         if log_type is not None:
             self._send_log(type=log_type, message=log_message)
         return 0
+    
+    """
+        @brief  This function handle new join request received by a ED.
+        @param dev_eui: The Dev EUI.
+        @param dev_addr: The Dev Addr.
+    """
+    def handle_otaa_join_request(self, dev_id, dev_eui, dev_addr):
+        # SEND LOG
+        # if len(self.e2ed_ids) < 1 or (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
+        self._send_log(type=LOG_ED, message=f'Dev {dev_eui} OTAA Activated. (Addr: {dev_addr})')
+        
+        if self.statistics.get("devices").get(dev_eui) is None:
+            self.statistics["devices"][dev_eui] = {
+                "dev_addr": dev_addr,
+                "legacy_frames": 0,
+                "edge_frames": 0
+            }
+        else:
+            self.statistics["devices"][dev_eui]["dev_addr"] = dev_addr
+
+        if dev_eui not in self.ed_ids:
+            self.e2ed_ids.append(dev_eui)
+        return 0
 
     """
         @brief  This function handle new public key info received by a ED.
@@ -341,8 +377,8 @@ class E2LoRaModule():
     """
     def handle_edge_join_request(self, dev_id, dev_eui, dev_addr, dev_pub_key_compressed_base_64):
         # SEND LOG
-        if len(self.e2ed_ids) < 1 or (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
-            self._send_log(type=LOG_ED, message=f'Starting Edge Join')
+        # if len(self.e2ed_ids) < 1 or (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
+        self._send_log(type=LOG_ED, message=f'Starting Edge Join (Dev: {dev_addr})')
 
         dev_obj = None
         e2gw = None
@@ -366,8 +402,8 @@ class E2LoRaModule():
                 log.error("No E2GW found")
                 return -1
         # SEND LOG
-        if len(self.e2ed_ids) < 1 or  (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
-            self._send_log(type=LOG_ED, message=f'Send EdgeJoinRequest')
+        # if len(self.e2ed_ids) < 1 or  (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
+        self._send_log(type=LOG_ED, message=f'Send EdgeJoinRequest (Dev: {dev_addr})')
         # Get g_as_gw
         g_as_gw = e2gw.get("g_as_gw")
         # Schedule downlink to ed with g_as_gw
@@ -379,8 +415,8 @@ class E2LoRaModule():
             dev_id = dev_id
             )
         # SEND LOG
-        if len(self.e2ed_ids) < 1 or  (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
-            self._send_log(type=LOG_ED, message=f'Received EdgeAcceptRequest')
+        # if len(self.e2ed_ids) < 1 or  (dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0):
+        self._send_log(type=LOG_ED, message=f'Received EdgeAcceptRequest (Dev: {dev_addr})')
 
         # Generate g_as_ed
         # Decode base64
@@ -425,10 +461,10 @@ class E2LoRaModule():
             self.e2ed_ids.append(dev_eui)
         
         # SEND LOG
-        if self.e2ed_ids.index(dev_eui) == 0:
-            self._send_log(type=LOG_ED, message=f'Edge Join Completed')
+        # if self.e2ed_ids.index(dev_eui) == 0:
+        self._send_log(type=LOG_ED, message=f'Edge Join Completed (Dev: {dev_addr}, GW: {self.e2gw_ids.index(e2gw.get("gw_rpc_endpoint_address"))+1})')
         if log_type is not None:
-            self._send_log(type=log_type, message=f'Edge Join Completed')
+            self._send_log(type=log_type, message=f'Edge Join Completed (Dev: {dev_addr})')
 
         return 0
 
@@ -441,10 +477,6 @@ class E2LoRaModule():
         @return: 0 is success, < 0 if failure.
     """ 
     def handle_edge_data_from_legacy(self, dev_id, dev_eui, dev_addr, frame_payload):
-        # log.info(f'Received Edge Frame from legacy route. Dev Addr: {dev_addr}');
-        # self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
-        # self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
-        # self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
         return 0
         
     """
@@ -455,16 +487,18 @@ class E2LoRaModule():
         @param frame_payload: The Frame Payload.
         @return: 0 is success, < 0 if failure.
     """
-    def handle_legacy_data(self, dev_id, dev_eui, dev_addr, frame_payload):
-        log.info(f'Received Legacy Frame from Legacy Route.');
-        self.statistics["rx_ns"] = self.statistics["rx_ns"] + 1
-        self.statistics["tx_ns"] = self.statistics["tx_ns"] + 1
-        self.statistics["rx_legacy_frames"] = self.statistics["rx_legacy_frames"] + 1
-        for i in range(len(self.e2gw_ids)):
-            if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
-                continue
-            self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + 1
-            self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
+    def handle_legacy_data(self, dev_id, dev_eui, dev_addr, frame_payload_base64):
+        # decode frame_payload_base64
+        frame_payload = base64.b64decode(frame_payload_base64)
+        log.info(f'Received Legacy Frame from Legacy Route. Data: {frame_payload}. Dev: {dev_addr}.');
+        self.statistics["ns"]["rx"] = self.statistics["ns"].get("rx", 0) + 2
+        self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
+        self.statistics["dm"]["rx_legacy_frames"] = self.statistics["dm"].get("rx_legacy_frames", 0) + 1
+        # for i in range(len(self.e2gw_ids)):
+        #     if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
+        #         continue
+        #     self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + 1
+        #     self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
         return 0
 
     """
@@ -477,18 +511,22 @@ class E2LoRaModule():
         @return: 0 is success, < 0 if failure.
     """
     def handle_edge_data(self, gw_id, dev_eui, dev_addr, aggregated_data, delta_time):
-        log.info(f'Received Edge Frame from E2ED. Data: {aggregated_data} Dev Addr: {dev_addr}. Passyng from GW: {gw_id}');
-        self.statistics["rx_e2l_frames"] = self.statistics["rx_e2l_frames"] + 1
-        for i in range(len(self.e2gw_ids)):
-            if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
-                continue
-            self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + self.window_size
-            if self.e2gw_ids[i] == gw_id:
-                self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
+        log.info(f'Received Edge Frame from E2ED. Data: {aggregated_data}. Dev Addr: {dev_addr}. E2GW: {gw_id}.');
+        self.statistics["dm"]["rx_e2l_frames"] = self.statistics["dm"].get("rx_e2l_frames", 0) + 1
+        if gw_id not in self.e2gw_ids:
+            return -1
+        self.statistics["gateways"][gw_id]["tx"] = self.statistics["gateways"][gw_id].get("tx", 0) + 1
+        # for i in range(len(self.e2gw_ids)):
+        #     if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
+        #         continue
+        #     self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + self.window_size
+        #     if self.e2gw_ids[i] == gw_id:
+        #         self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
 
         # SEND LOG
         if self.e2ed_ids.index(dev_eui) == 0:
-            self._send_log(type=LOG_ED, message=f'E2L Frame Received by DM')
+            self.statistics["aggregation_result"] = aggregated_data
+        self._send_log(type=LOG_ED, message=f'E2L Frame Received by DM (Dev: {dev_addr})')
 
         return 0
 
@@ -501,6 +539,47 @@ class E2LoRaModule():
             return
         self.dashboard_update_loop = Thread(target=self._update_dashboard)
         self.dashboard_update_loop.start()
+
+    """
+        @brief  This function handle the gateway log.
+        @param gw_id: The gateway id.
+        @param log_message: The log message.
+        @return: 0 is success, < 0 if failure.
+    """
+    def handle_gw_log(self, gw_id, dev_addr, log_message, frame_type):
+        if self.dashboard_rpc_stub is None or gw_id not in self.e2gw_ids:
+            return -1
+        # SEND LOG
+        index = self.e2gw_ids.index(gw_id)
+        log_type = None
+        if index == 0:
+            log_type = LOG_GW1
+        elif index == 1:
+            log_type = LOG_GW2
+        else: 
+            log_type = None
+        if log_type is not None:
+            self._send_log(type=log_type, message=log_message)
+
+        dev_eui = None
+        for ed in self.ed_ids:
+            if self.statistics[ed]["dev_addr"] == dev_addr:
+                dev_eui = ed
+                break
+
+        if frame_type == EDGE_FRAME:
+            self.statistics["gateways"][gw_id]["rx"] = self.statistics["gateways"][gw_id].get("rx", 0) + 1
+            if dev_eui is not None:
+                self.statistics["devices"][dev_eui]["edge_frames"] = self.statistics["devices"][dev_eui].get("edge_frames", 0) + 1
+        elif frame_type == LEGACY_FRAME:
+            self.statistics["gateways"][gw_id]["rx"] = self.statistics["gateways"][gw_id].get("rx", 0) + 1
+            self.statistics["gateways"][gw_id]["tx"] = self.statistics["gateways"][gw_id].get("tx", 0) + 1
+            if dev_eui is not None:
+                self.statistics["devices"][dev_eui]["legacy_frames"] = self.statistics["devices"][dev_eui].get("legacy_frames", 0) + 1
+        else:
+            log.warning("Unknown frame type")
+        
+        return 0
 
     """
         @brief  This function set the mqtt client object.

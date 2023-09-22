@@ -33,8 +33,8 @@ log = logging.getLogger(__name__)
 """
 def check_env_vars() -> bool:
     env_vars = [
-        'MQTT_USERNAME', 'MQTT_PASSWORD', 'MQTT_HOST', 'MQTT_PORT',
-        'MQTT_TOPIC', 'MQTT_BASE_TOPIC', "DASHBOARD_RPC_HOST", "DASHBOARD_RPC_PORT",
+        "MQTT_USERNAME", "MQTT_PASSWORD", "MQTT_HOST", "MQTT_PORT",
+        "MQTT_BASE_TOPIC", "MQTT_UPLINK_TOPIC", "MQTT_OTAA_TOPIC", "DASHBOARD_RPC_HOST", "DASHBOARD_RPC_PORT",
     ]
     for var in env_vars:
         if os.getenv(var) is None:
@@ -58,14 +58,18 @@ def check_env_vars() -> bool:
     @return: None.
 """
 def subscribe_callback(client, userdata, message):
+    topic = message.topic
     payload_str = message.payload.decode('utf-8')
     payload = json.loads(payload_str)
-    up_msg = payload.get("uplink_message")
-    up_port = up_msg.get("f_port")
     end_devices_infos = payload.get('end_device_ids')
     dev_id = end_devices_infos.get('device_id')
     dev_eui = end_devices_infos.get('dev_eui')
     dev_addr = end_devices_infos.get('dev_addr')
+    if "/join" in topic:
+        ret = client.e2l_module.handle_otaa_join_request(dev_id = dev_id, dev_eui= dev_eui, dev_addr = dev_addr)
+        return ret
+    up_msg = payload.get("uplink_message")
+    up_port = up_msg.get("f_port")
     uplink_message = payload.get('uplink_message')
     frame_payload = uplink_message.get('frm_payload')
     ret = 0
@@ -132,10 +136,14 @@ if __name__ == '__main__':
     log.debug("Connected to MQTT broker")
 
     # SUBSCRIBE TO TOPIC
-    topic = os.getenv('MQTT_TOPIC')
-    log.debug(f"Subscribing to MQTT topic {topic}...")
-    mqqt_client.subscribe_to_topic(topic=topic, callback=subscribe_callback)
-    log.debug(f"Subscribed to MQTT topic {topic}")
+    uplink_topic = os.getenv('MQTT_UPLINK_TOPIC')
+    join_topic = os.getenv('MQTT_OTAA_TOPIC')
+    log.debug(f"Subscribing to MQTT topic {uplink_topic}...")
+    mqqt_client.subscribe_to_topic(topic=uplink_topic, callback=subscribe_callback)
+    log.debug(f"Subscribed to MQTT topic {uplink_topic}")
+    log.debug(f"Subscribing to MQTT topic {join_topic}...")
+    mqqt_client.subscribe_to_topic(topic=join_topic, callback=subscribe_callback)
+    log.debug(f"Subscribed to MQTT topic {join_topic}")
 
     # PASS MQTT CLIENT TO E2L MODULE
     e2l_module.set_mqtt_client(mqqt_client)

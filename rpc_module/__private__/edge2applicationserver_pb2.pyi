@@ -35,3 +35,15 @@ class EdgeData(_message.Message):
     aggregated_data: int
     timetag: int
     def __init__(self, gw_id: _Optional[str] = ..., dev_eui: _Optional[str] = ..., dev_addr: _Optional[str] = ..., aggregated_data: _Optional[int] = ..., timetag: _Optional[int] = ...) -> None: ...
+
+class GWLog(_message.Message):
+    __slots__ = ["gw_id", "dev_addr", "log", "frame_type"]
+    GW_ID_FIELD_NUMBER: _ClassVar[int]
+    DEV_ADDR_FIELD_NUMBER: _ClassVar[int]
+    LOG_FIELD_NUMBER: _ClassVar[int]
+    FRAME_TYPE_FIELD_NUMBER: _ClassVar[int]
+    gw_id: str
+    dev_addr: str
+    log: str
+    frame_type: int
+    def __init__(self, gw_id: _Optional[str] = ..., dev_addr: _Optional[str] = ..., log: _Optional[str] = ..., frame_type: _Optional[int] = ...) -> None: ...
