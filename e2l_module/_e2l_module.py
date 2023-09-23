@@ -4,8 +4,8 @@ import time
 from Crypto.PublicKey import ECC
 import logging
 import grpc
-from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo, AggregationParams, E2LDeviceInfo , GwResponse
-from .__private__ import demo_pb2_grpc, SendStatistics, SendLogMessage
+from e2gw_rpc_client import edge2gateway_pb2_grpc, EdPubInfo, AggregationParams, E2LDeviceInfo 
+from .__private__ import demo_pb2_grpc, SendStatistics, SendLogMessage, SendJoinUpdateMessage
 import json
 import hashlib
 from threading import Thread
@@ -465,6 +465,17 @@ class E2LoRaModule():
         self._send_log(type=LOG_ED, message=f'Edge Join Completed (Dev: {dev_addr}, GW: {self.e2gw_ids.index(e2gw.get("gw_rpc_endpoint_address"))+1})')
         if log_type is not None:
             self._send_log(type=log_type, message=f'Edge Join Completed (Dev: {dev_addr})')
+
+        # UPDATE DASHBOARD NETWORK TOPOLOGY
+        join_update_message = SendJoinUpdateMessage(
+            client_id = 1,
+            message_data = '',
+            ed_id= self.e2ed_ids.index(dev_eui) +1,
+            gw_id= self.e2gw_ids.index(e2gw.get("gw_rpc_endpoint_address"))+1
+        )
+        log.debug(f'join_update_message: {join_update_message}')
+        ret = self.dashboard_rpc_stub.SimpleMethodsJoinUpdateMessage(join_update_message)
+        log.debug = ret
 
         return 0
 

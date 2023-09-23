@@ -88,6 +88,26 @@ class ReplyLogMessage(_message.Message):
     response_data: str
     def __init__(self, server_id: _Optional[int] = ..., response_data: _Optional[str] = ...) -> None: ...
 
+class SendJoinUpdateMessage(_message.Message):
+    __slots__ = ["client_id", "message_data", "ed_id", "gw_id"]
+    CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_DATA_FIELD_NUMBER: _ClassVar[int]
+    ED_ID_FIELD_NUMBER: _ClassVar[int]
+    GW_ID_FIELD_NUMBER: _ClassVar[int]
+    client_id: int
+    message_data: str
+    ed_id: int
+    gw_id: int
+    def __init__(self, client_id: _Optional[int] = ..., message_data: _Optional[str] = ..., ed_id: _Optional[int] = ..., gw_id: _Optional[int] = ...) -> None: ...
+
+class ReplyJoinUpdateMessage(_message.Message):
+    __slots__ = ["server_id", "response_data"]
+    SERVER_ID_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_DATA_FIELD_NUMBER: _ClassVar[int]
+    server_id: int
+    response_data: str
+    def __init__(self, server_id: _Optional[int] = ..., response_data: _Optional[str] = ...) -> None: ...
+
 class SendLogED(_message.Message):
     __slots__ = ["client_id", "message_data", "ed_key_agreement_message_log", "key_agreement_process_time"]
     CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
