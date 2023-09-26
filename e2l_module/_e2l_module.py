@@ -86,6 +86,9 @@ class E2LoRaModule():
         # Aggregation Utils
         self.aggregation_function = None
         self.window_size = None
+        self.ed_1_gw_selection = None
+        self.ed_2_gw_selection = None
+        self.ed_3_gw_selection = None
 
     """
         @brief: this function send log to the dashboard
@@ -104,7 +107,6 @@ class E2LoRaModule():
         )
         log.info(f'Sending log to dashboard: {type}\t{message}')
         response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
-        log.info(response)
 
     """
         @brief  This function collect the stats and return a SendStatistics object
@@ -130,7 +132,7 @@ class E2LoRaModule():
                 ns_received_frame_frame_num = ns_info.get("rx", 0),
                 ns_transmitted_frame_frame_num = ns_info.get("tx", 0),
                 module_received_frame_frame_num = dm_info.get("rx_legacy_frames", 0) + dm_info.get("rx_e2l_frames", 0),
-                aggregation_function_result = self.statistics["aggregation_result"]
+                aggregation_function_result = self.statistics.get("aggregation_result", 0)
             )
             yield request
             # time.sleep(5)
@@ -148,11 +150,12 @@ class E2LoRaModule():
     """
     def _update_params(self, ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size):
         # UPDATE AGGREGATION PARAMETERS
-        if self.window_size is None or self.aggregation_function is None or self.window_size != window_size or self.aggregation_function != aggregation_function:
+        if  self.window_size is None or self.aggregation_function is None or self.window_size != window_size or self.aggregation_function != aggregation_function:
             self.window_size = window_size
             self.aggregation_function = aggregation_function
             for e2gw_id in self.e2gw_ids:
-                gw_stub = self.active_directory["e2gws"].get(e2gw_id).get("e2gw_stub")
+                gw_info = self.active_directory["e2gws"].get(e2gw_id)
+                gw_stub = gw_info.get("e2gw_stub")
                 new_aggregation_params = AggregationParams(
                     aggregation_function = aggregation_function,
                     window_size = window_size
@@ -160,10 +163,12 @@ class E2LoRaModule():
                 gw_stub.update_aggregation_params(new_aggregation_params)
         
         rejoin_command_base64 = base64.b64encode(REJOIN_COMMAND.encode('utf-8')).decode('utf-8')
+
         # UPDATE ED 1 GW SELECTION
         if len(self.e2gw_ids) >= ed_1_gw_selection and len(self.e2ed_ids) > 0:
+            self.ed_1_gw_selection = ed_1_gw_selection
             dev_eui = self.e2ed_ids[0]
-            new_e2gw_id = self.e2gw_ids[ed_1_gw_selection - 1]
+            new_e2gw_id = self.e2gw_ids[self.ed_1_gw_selection - 1]
             e2ed_info = self.active_directory["e2eds"].get(dev_eui)
             if e2ed_info is not None:
                 old_e2gw_id = e2ed_info.get("e2gw")
@@ -176,18 +181,20 @@ class E2LoRaModule():
                         lorawan_port = DEFAULT_E2L_COMMAND_PORT,
                         priority = "HIGHEST"
                     )
-                    old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
-                    e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
-                        dev_eui = dev_eui,
-                        dev_addr = e2ed_info.get("dev_addr"),
-                    ))
+                    old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
+                    if old_gw_info is not None:
+                        old_e2gw_stub = old_gw_info.get("e2gw_stub")
+                        if old_e2gw_stub is not None:
+                            e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
+                                dev_eui = dev_eui,
+                                dev_addr = e2ed_info.get("dev_addr"),
+                            ))
 
-
-                    
         # UPDATE ED 2 GW SELECTION
         if len(self.e2gw_ids) >= ed_2_gw_selection and len(self.e2ed_ids) > 1:
+            self.ed_2_gw_selection = ed_2_gw_selection
             dev_eui = self.e2ed_ids[1]
-            new_e2gw_id = self.e2gw_ids[ed_2_gw_selection - 1]
+            new_e2gw_id = self.e2gw_ids[self.ed_2_gw_selection - 1]
             e2ed_info = self.active_directory["e2eds"].get(dev_eui)
             if e2ed_info is not None:
                 old_e2gw_id = e2ed_info.get("e2gw")
@@ -200,16 +207,20 @@ class E2LoRaModule():
                         lorawan_port = DEFAULT_E2L_COMMAND_PORT,
                         priority = "HIGHEST"
                     )
-                    old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
-                    e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
-                        dev_eui = dev_eui,
-                        dev_addr = e2ed_info.get("dev_addr"),
-                    ))
-                    
+                    old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
+                    if old_gw_info is not None:
+                        old_e2gw_stub = old_gw_info.get("e2gw_stub")
+                        if old_e2gw_stub is not None:
+                            e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
+                                dev_eui = dev_eui,
+                                dev_addr = e2ed_info.get("dev_addr"),
+                            ))
+ 
         # UPDATE ED 3 GW SELECTION
         if len(self.e2gw_ids) >= ed_3_gw_selection and len(self.e2ed_ids) > 2:
+            self.ed_3_gw_selection = ed_3_gw_selection
             dev_eui = self.e2ed_ids[2]
-            new_e2gw_id = self.e2gw_ids[ed_3_gw_selection - 1]
+            new_e2gw_id = self.e2gw_ids[self.ed_3_gw_selection - 1]
             e2ed_info = self.active_directory["e2eds"].get(dev_eui)
             if e2ed_info is not None:
                 old_e2gw_id = e2ed_info.get("e2gw")
@@ -222,11 +233,14 @@ class E2LoRaModule():
                         lorawan_port = DEFAULT_E2L_COMMAND_PORT,
                         priority = "HIGHEST"
                     )
-                    old_e2gw_stub = self.active_directory["e2gws"].get(old_e2gw_id).get("e2gw_stub")
-                    e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
-                        dev_eui = dev_eui,
-                        dev_addr = e2ed_info.get("dev_addr"),
-                    ))
+                    old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
+                    if old_gw_info is not None:
+                        old_e2gw_stub = old_gw_info.get("e2gw_stub")
+                        if old_e2gw_stub is not None:
+                            e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
+                                dev_eui = dev_eui,
+                                dev_addr = e2ed_info.get("dev_addr"),
+                            ))
                     
     """
         @brief  This function is used to periodically send the stats to the dashboard, and get the new settings.
@@ -234,13 +248,14 @@ class E2LoRaModule():
     """
     def _update_dashboard(self):
         while(True):
-            time.sleep(5)
             log.info("Sending statistics to dashboard")
             response = self.dashboard_rpc_stub.ClientStreamingMethodStatistics(self._get_stats())
+            log.info(f"Received commands from dashboard:\n{response}")
             ed_1_gw_selection = response.ed_1_gw_selection
             ed_2_gw_selection = response.ed_2_gw_selection
             ed_3_gw_selection = response.ed_3_gw_selection
             aggregation_function_str = response.process_function
+            # log.info(f"Aggregation function: {aggregation_function_str}\n\n\n\n")
             aggregation_function = AVG_ID
             if aggregation_function_str == "mean":
                 aggregation_function = AVG_ID
@@ -254,6 +269,7 @@ class E2LoRaModule():
                 log.error("Unknown aggregation function. Setting to AVG.")
             window_size = response.process_window
             self._update_params(ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size)
+            time.sleep(5)
 
     """
         @brief  This function is used to send a downlink frame to a ED.
@@ -385,7 +401,33 @@ class E2LoRaModule():
         # Check if ED is already registered
         if self.active_directory["e2eds"].get(dev_eui) is None:
             # Assign E2GW to E2ED and store informations
-            e2gw = self.active_directory["e2gws"].get(list(self.active_directory["e2gws"].keys())[0])
+            selected_e2gw = 1
+            if dev_eui in self.e2ed_ids:
+                ed_index = self.e2ed_ids.index(dev_eui)
+                if ed_index == 0:
+                    selected_e2gw  = self.ed_1_gw_selection
+                elif ed_index == 1:
+                    selected_e2gw  = self.ed_2_gw_selection
+                elif ed_index == 2:
+                    selected_e2gw  = self.ed_3_gw_selection
+                else:
+                    pass
+            else:
+                ed_next_index = len(self.e2ed_ids)
+                if ed_next_index == 0:
+                    selected_e2gw = self.ed_1_gw_selection
+                elif ed_next_index == 1:
+                    selected_e2gw = self.ed_2_gw_selection
+                elif ed_next_index == 2:
+                    selected_e2gw = self.ed_3_gw_selection
+                else:
+                    pass
+
+            if len(self.e2gw_ids) > 0:
+                if len(self.e2gw_ids) < selected_e2gw:
+                    e2gw = self.active_directory["e2gws"].get(self.e2gw_ids[0])
+                else:
+                    e2gw = self.active_directory["e2gws"].get(self.e2gw_ids[selected_e2gw-1])
             if e2gw is None:
                 log.error("No E2GW found")
                 return -1
@@ -398,6 +440,8 @@ class E2LoRaModule():
         else:
             dev_obj = self.active_directory["e2eds"].get(dev_eui)
             e2gw = self.active_directory["e2gws"].get(dev_obj.get("e2gw"))
+            log.debug(f'E2ED: {dev_eui} already registered')
+            log.debug(f'E2GW: {dev_obj.get("e2gw")}')
             if e2gw is None:
                 log.error("No E2GW found")
                 return -1
@@ -473,9 +517,7 @@ class E2LoRaModule():
             ed_id= self.e2ed_ids.index(dev_eui) +1,
             gw_id= self.e2gw_ids.index(e2gw.get("gw_rpc_endpoint_address"))+1
         )
-        log.debug(f'join_update_message: {join_update_message}')
         ret = self.dashboard_rpc_stub.SimpleMethodsJoinUpdateMessage(join_update_message)
-        log.debug = ret
 
         return 0
 
