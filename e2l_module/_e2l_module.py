@@ -165,94 +165,97 @@ class E2LoRaModule():
         rejoin_command_base64 = base64.b64encode(REJOIN_COMMAND.encode('utf-8')).decode('utf-8')
 
         # UPDATE ED 1 GW SELECTION
-        if len(self.e2gw_ids) >= ed_1_gw_selection and len(self.e2ed_ids) > 0:
+        if len(self.e2gw_ids) >= ed_1_gw_selection:
             self.ed_1_gw_selection = ed_1_gw_selection
-            dev_eui = self.e2ed_ids[0]
-            new_e2gw_id = self.e2gw_ids[self.ed_1_gw_selection - 1]
-            e2ed_info = self.active_directory["e2eds"].get(dev_eui)
-            if e2ed_info is not None:
-                e2ed_addr = e2ed_info.get("dev_addr")
-                old_e2gw_id = e2ed_info.get("e2gw")
-                if new_e2gw_id != old_e2gw_id:
-                    self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
-                    dev_id = e2ed_info.get("dev_id")
-                    self._send_downlink_frame(
-                        base64_message = rejoin_command_base64,
-                        dev_id = dev_id,
-                        lorawan_port = DEFAULT_E2L_COMMAND_PORT,
-                        priority = "HIGHEST"
-                    )
-                    old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
-                    if old_gw_info is not None:
-                        old_e2gw_stub = old_gw_info.get("e2gw_stub")
-                        if old_e2gw_stub is not None:
-                            e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
-                                dev_eui = dev_eui,
-                                dev_addr = e2ed_info.get("dev_addr"),
-                            ))
-                            if e2ed_data.status_code == 0 :
-                                log_message = f'Removed E2ED {e2ed_addr} from E2GW'
-                                self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
+            if len(self.e2ed_ids) >0:
+                dev_eui = self.e2ed_ids[0]
+                new_e2gw_id = self.e2gw_ids[self.ed_1_gw_selection - 1]
+                e2ed_info = self.active_directory["e2eds"].get(dev_eui)
+                if e2ed_info is not None:
+                    e2ed_addr = e2ed_info.get("dev_addr")
+                    old_e2gw_id = e2ed_info.get("e2gw")
+                    if new_e2gw_id != old_e2gw_id:
+                        self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
+                        dev_id = e2ed_info.get("dev_id")
+                        self._send_downlink_frame(
+                            base64_message = rejoin_command_base64,
+                            dev_id = dev_id,
+                            lorawan_port = DEFAULT_E2L_COMMAND_PORT,
+                            priority = "HIGHEST"
+                        )
+                        old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
+                        if old_gw_info is not None:
+                            old_e2gw_stub = old_gw_info.get("e2gw_stub")
+                            if old_e2gw_stub is not None:
+                                e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
+                                    dev_eui = dev_eui,
+                                    dev_addr = e2ed_info.get("dev_addr"),
+                                ))
+                                if e2ed_data.status_code == 0 :
+                                    log_message = f'Removed E2ED {e2ed_addr} from E2GW'
+                                    self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
 
         # UPDATE ED 2 GW SELECTION
-        if len(self.e2gw_ids) >= ed_2_gw_selection and len(self.e2ed_ids) > 1:
+        if len(self.e2gw_ids) >= ed_2_gw_selection:
             self.ed_2_gw_selection = ed_2_gw_selection
-            dev_eui = self.e2ed_ids[1]
-            new_e2gw_id = self.e2gw_ids[self.ed_2_gw_selection - 1]
-            e2ed_info = self.active_directory["e2eds"].get(dev_eui)
-            if e2ed_info is not None:
-                e2ed_addr = e2ed_info.get("dev_addr")
-                old_e2gw_id = e2ed_info.get("e2gw")
-                if new_e2gw_id != old_e2gw_id:
-                    self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
-                    dev_id = e2ed_info.get("dev_id")
-                    self._send_downlink_frame(
-                        base64_message = rejoin_command_base64,
-                        dev_id = dev_id,
-                        lorawan_port = DEFAULT_E2L_COMMAND_PORT,
-                        priority = "HIGHEST"
-                    )
-                    old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
-                    if old_gw_info is not None:
-                        old_e2gw_stub = old_gw_info.get("e2gw_stub")
-                        if old_e2gw_stub is not None:
-                            e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
-                                dev_eui = dev_eui,
-                                dev_addr = e2ed_info.get("dev_addr"),
-                            ))
-                            if e2ed_data.status_code == 0 :
-                                log_message = f'Removed E2ED {e2ed_addr} from E2GW'
-                                self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
+            if len(self.e2ed_ids) > 1:
+                dev_eui = self.e2ed_ids[1]
+                new_e2gw_id = self.e2gw_ids[self.ed_2_gw_selection - 1]
+                e2ed_info = self.active_directory["e2eds"].get(dev_eui)
+                if e2ed_info is not None:
+                    e2ed_addr = e2ed_info.get("dev_addr")
+                    old_e2gw_id = e2ed_info.get("e2gw")
+                    if new_e2gw_id != old_e2gw_id:
+                        self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
+                        dev_id = e2ed_info.get("dev_id")
+                        self._send_downlink_frame(
+                            base64_message = rejoin_command_base64,
+                            dev_id = dev_id,
+                            lorawan_port = DEFAULT_E2L_COMMAND_PORT,
+                            priority = "HIGHEST"
+                        )
+                        old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
+                        if old_gw_info is not None:
+                            old_e2gw_stub = old_gw_info.get("e2gw_stub")
+                            if old_e2gw_stub is not None:
+                                e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
+                                    dev_eui = dev_eui,
+                                    dev_addr = e2ed_info.get("dev_addr"),
+                                ))
+                                if e2ed_data.status_code == 0 :
+                                    log_message = f'Removed E2ED {e2ed_addr} from E2GW'
+                                    self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
  
         # UPDATE ED 3 GW SELECTION
-        if len(self.e2gw_ids) >= ed_3_gw_selection and len(self.e2ed_ids) > 2:
+        if len(self.e2gw_ids) >= ed_3_gw_selection:
             self.ed_3_gw_selection = ed_3_gw_selection
-            dev_eui = self.e2ed_ids[2]
-            new_e2gw_id = self.e2gw_ids[self.ed_3_gw_selection - 1]
-            e2ed_info = self.active_directory["e2eds"].get(dev_eui)
-            if e2ed_info is not None:
-                e2ed_addr = e2ed_info.get("dev_addr")
-                old_e2gw_id = e2ed_info.get("e2gw")
-                if new_e2gw_id != old_e2gw_id:
-                    self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
-                    dev_id = e2ed_info.get("dev_id")
-                    self._send_downlink_frame(
-                        base64_message = rejoin_command_base64,
-                        dev_id = dev_id,
-                        lorawan_port = DEFAULT_E2L_COMMAND_PORT,
-                        priority = "HIGHEST"
-                    )
-                    old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
-                    if old_gw_info is not None:
-                        old_e2gw_stub = old_gw_info.get("e2gw_stub")
-                        if old_e2gw_stub is not None:
-                            e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
-                                dev_eui = dev_eui,
-                                dev_addr = e2ed_addr,
-                            ))
-                            if e2ed_data.status_code == 0  and e2ed_data.aggregated_data_num > 0:
-                                log_message = f'Removed E2ED {e2ed_addr} from E2GW'
-                                self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
+            if len(self.e2ed_ids) > 2:
+                dev_eui = self.e2ed_ids[2]
+                new_e2gw_id = self.e2gw_ids[self.ed_3_gw_selection - 1]
+                e2ed_info = self.active_directory["e2eds"].get(dev_eui)
+                if e2ed_info is not None:
+                    e2ed_addr = e2ed_info.get("dev_addr")
+                    old_e2gw_id = e2ed_info.get("e2gw")
+                    if new_e2gw_id != old_e2gw_id:
+                        self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
+                        dev_id = e2ed_info.get("dev_id")
+                        self._send_downlink_frame(
+                            base64_message = rejoin_command_base64,
+                            dev_id = dev_id,
+                            lorawan_port = DEFAULT_E2L_COMMAND_PORT,
+                            priority = "HIGHEST"
+                        )
+                        old_gw_info = self.active_directory["e2gws"].get(old_e2gw_id)
+                        if old_gw_info is not None:
+                            old_e2gw_stub = old_gw_info.get("e2gw_stub")
+                            if old_e2gw_stub is not None:
+                                e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
+                                    dev_eui = dev_eui,
+                                    dev_addr = e2ed_addr,
+                                ))
+                                if e2ed_data.status_code == 0  and e2ed_data.aggregated_data_num > 0:
+                                    log_message = f'Removed E2ED {e2ed_addr} from E2GW'
+                                    self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
 
                     
     """
