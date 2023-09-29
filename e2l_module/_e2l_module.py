@@ -171,6 +171,7 @@ class E2LoRaModule():
             new_e2gw_id = self.e2gw_ids[self.ed_1_gw_selection - 1]
             e2ed_info = self.active_directory["e2eds"].get(dev_eui)
             if e2ed_info is not None:
+                e2ed_addr = e2ed_info.get("dev_addr")
                 old_e2gw_id = e2ed_info.get("e2gw")
                 if new_e2gw_id != old_e2gw_id:
                     self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
@@ -189,6 +190,9 @@ class E2LoRaModule():
                                 dev_eui = dev_eui,
                                 dev_addr = e2ed_info.get("dev_addr"),
                             ))
+                            if e2ed_data.status_code == 0 :
+                                log_message = f'Removed E2ED {e2ed_addr} from E2GW'
+                                self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
 
         # UPDATE ED 2 GW SELECTION
         if len(self.e2gw_ids) >= ed_2_gw_selection and len(self.e2ed_ids) > 1:
@@ -197,6 +201,7 @@ class E2LoRaModule():
             new_e2gw_id = self.e2gw_ids[self.ed_2_gw_selection - 1]
             e2ed_info = self.active_directory["e2eds"].get(dev_eui)
             if e2ed_info is not None:
+                e2ed_addr = e2ed_info.get("dev_addr")
                 old_e2gw_id = e2ed_info.get("e2gw")
                 if new_e2gw_id != old_e2gw_id:
                     self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
@@ -215,6 +220,9 @@ class E2LoRaModule():
                                 dev_eui = dev_eui,
                                 dev_addr = e2ed_info.get("dev_addr"),
                             ))
+                            if e2ed_data.status_code == 0 :
+                                log_message = f'Removed E2ED {e2ed_addr} from E2GW'
+                                self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
  
         # UPDATE ED 3 GW SELECTION
         if len(self.e2gw_ids) >= ed_3_gw_selection and len(self.e2ed_ids) > 2:
@@ -223,6 +231,7 @@ class E2LoRaModule():
             new_e2gw_id = self.e2gw_ids[self.ed_3_gw_selection - 1]
             e2ed_info = self.active_directory["e2eds"].get(dev_eui)
             if e2ed_info is not None:
+                e2ed_addr = e2ed_info.get("dev_addr")
                 old_e2gw_id = e2ed_info.get("e2gw")
                 if new_e2gw_id != old_e2gw_id:
                     self.active_directory["e2eds"][dev_eui]["e2gw"] = new_e2gw_id
@@ -239,8 +248,12 @@ class E2LoRaModule():
                         if old_e2gw_stub is not None:
                             e2ed_data = old_e2gw_stub.remove_e2device(E2LDeviceInfo(
                                 dev_eui = dev_eui,
-                                dev_addr = e2ed_info.get("dev_addr"),
+                                dev_addr = e2ed_addr,
                             ))
+                            if e2ed_data.status_code == 0  and e2ed_data.aggregated_data_num > 0:
+                                log_message = f'Removed E2ED {e2ed_addr} from E2GW'
+                                self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
+
                     
     """
         @brief  This function is used to periodically send the stats to the dashboard, and get the new settings.
@@ -563,7 +576,7 @@ class E2LoRaModule():
         @param delta_time: The Delta Time.
         @return: 0 is success, < 0 if failure.
     """
-    def handle_edge_data(self, gw_id, dev_eui, dev_addr, aggregated_data, delta_time):
+    def handle_edge_data(self, gw_id, dev_eui, dev_addr, aggregated_data, delta_time, gw_log_message = None):
         log.info(f'Received Edge Frame from E2ED. Data: {aggregated_data}. Dev Addr: {dev_addr}. E2GW: {gw_id}.');
         self.statistics["dm"]["rx_e2l_frames"] = self.statistics["dm"].get("rx_e2l_frames", 0) + 1
         if gw_id not in self.e2gw_ids:
@@ -580,6 +593,18 @@ class E2LoRaModule():
         if self.e2ed_ids.index(dev_eui) == 0:
             self.statistics["aggregation_result"] = aggregated_data
         self._send_log(type=LOG_ED, message=f'E2L Frame Received by DM (Dev: {dev_addr})')
+
+        if gw_log_message is not None:
+            index = self.e2gw_ids.index(gw_id)
+            log_type = None
+            if index == 0:
+                log_type = LOG_GW1
+            elif index == 1:
+                log_type = LOG_GW2
+            else: 
+                log_type = None
+            if log_type is not None:
+                self._send_log(type=log_type, message=gw_log_message)
 
         return 0
 
