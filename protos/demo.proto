@@ -83,6 +83,18 @@ message ReplyLogMessage {
     string response_data = 2;
 }
 
+message SendJoinUpdateMessage {
+    int64 client_id = 1;
+    string message_data = 2;
+    int64 ed_id = 3;
+    int64 gw_id = 4;
+}
+
+message ReplyJoinUpdateMessage {
+    int64 server_id = 1;
+    string response_data = 2;
+}
+
 message SendLogED {
     int64 client_id = 1;
     string message_data = 2;
@@ -155,6 +167,9 @@ service GRPCDemo {
     // to each other multiple times.)
     rpc BidirectionalStreamingMethodStatistics (stream SendStatistics) returns (stream ReplyStatistics);
 
+    // unary-unary(In a single call, the client can only send request once, and the server can
+    // only respond once.)
+    rpc SimpleMethodsJoinUpdateMessage (SendJoinUpdateMessage) returns (ReplyJoinUpdateMessage);
 
     // unary-unary(In a single call, the client can only send request once, and the server can
     // only respond once.)
@@ -174,4 +189,3 @@ service GRPCDemo {
 
 
 }
-

@@ -57,6 +57,11 @@ class GRPCDemoStub(object):
                 request_serializer=demo__pb2.SendStatistics.SerializeToString,
                 response_deserializer=demo__pb2.ReplyStatistics.FromString,
                 )
+        self.SimpleMethodsJoinUpdateMessage = channel.unary_unary(
+                '/demo.GRPCDemo/SimpleMethodsJoinUpdateMessage',
+                request_serializer=demo__pb2.SendJoinUpdateMessage.SerializeToString,
+                response_deserializer=demo__pb2.ReplyJoinUpdateMessage.FromString,
+                )
         self.SimpleMethodsLogMessage = channel.unary_unary(
                 '/demo.GRPCDemo/SimpleMethodsLogMessage',
                 request_serializer=demo__pb2.SendLogMessage.SerializeToString,
@@ -149,6 +154,14 @@ class GRPCDemoServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SimpleMethodsJoinUpdateMessage(self, request, context):
+        """unary-unary(In a single call, the client can only send request once, and the server can
+        only respond once.)
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def SimpleMethodsLogMessage(self, request, context):
         """unary-unary(In a single call, the client can only send request once, and the server can
         only respond once.)
@@ -223,6 +236,11 @@ def add_GRPCDemoServicer_to_server(servicer, server):
                     servicer.BidirectionalStreamingMethodStatistics,
                     request_deserializer=demo__pb2.SendStatistics.FromString,
                     response_serializer=demo__pb2.ReplyStatistics.SerializeToString,
+            ),
+            'SimpleMethodsJoinUpdateMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.SimpleMethodsJoinUpdateMessage,
+                    request_deserializer=demo__pb2.SendJoinUpdateMessage.FromString,
+                    response_serializer=demo__pb2.ReplyJoinUpdateMessage.SerializeToString,
             ),
             'SimpleMethodsLogMessage': grpc.unary_unary_rpc_method_handler(
                     servicer.SimpleMethodsLogMessage,
@@ -390,6 +408,23 @@ class GRPCDemo(object):
         return grpc.experimental.stream_stream(request_iterator, target, '/demo.GRPCDemo/BidirectionalStreamingMethodStatistics',
             demo__pb2.SendStatistics.SerializeToString,
             demo__pb2.ReplyStatistics.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SimpleMethodsJoinUpdateMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/demo.GRPCDemo/SimpleMethodsJoinUpdateMessage',
+            demo__pb2.SendJoinUpdateMessage.SerializeToString,
+            demo__pb2.ReplyJoinUpdateMessage.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
