@@ -1,10 +1,19 @@
-import os
+import os, sys
+import time
+import math
 import logging
+from dateutil.parser import isoparse
+from concurrent import futures
+
+import grpc
+from rpc_module import edge2applicationserver_pb2_grpc
+from rpc_module import Edge2LoRaApplicationServer
+
 from mqtt_module import MQTTModule
-from rpc_module import RPCModuleService
-from rpyc.utils.server import ThreadedServer
 import json
 import base64
+
+from e2l_module import (E2LoRaModule, DEFAULT_APP_PORT, DEFAULT_E2L_APP_PORT, DEFAULT_E2L_JOIN_PORT)
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -15,16 +24,17 @@ if DEBUG:
 else:
     logging.basicConfig(level=logging.INFO)
 
-
 log = logging.getLogger(__name__)
 
-def check_env_vars():
+"""
+    @brief: This function is used to check if the environment variables are set.
+    @return: True if all environment variables are set, False otherwise.
+    @rtype: bool
+"""
+def check_env_vars() -> bool:
     env_vars = [
-        'MQTT_USERNAME',
-        'MQTT_PASSWORD',
-        'MQTT_HOST',
-        'MQTT_PORT',
-        'MQTT_TOPIC'
+        "MQTT_USERNAME", "MQTT_PASSWORD", "MQTT_HOST", "MQTT_PORT",
+        "MQTT_BASE_TOPIC", "MQTT_UPLINK_TOPIC", "MQTT_OTAA_TOPIC", "DASHBOARD_RPC_HOST", "DASHBOARD_RPC_PORT",
     ]
     for var in env_vars:
         if os.getenv(var) is None:
@@ -39,70 +49,107 @@ def check_env_vars():
                 exit(1)
     return True
 
+"""
+    @brief: This function is called when a new message is received from the
+            MQTT broker.
+    @param client: The client object.
+    @param userdata: The user data.
+    @param message: The message.
+    @return: None.
+"""
 def subscribe_callback(client, userdata, message):
-    return None
-    log.debug(f"Received message from topic: {message.topic}")
+    topic = message.topic
     payload_str = message.payload.decode('utf-8')
     payload = json.loads(payload_str)
-    log.debug(f"Payload keys: {list(payload.keys())}")
     end_devices_infos = payload.get('end_device_ids')
+    dev_id = end_devices_infos.get('device_id')
     dev_eui = end_devices_infos.get('dev_eui')
     dev_addr = end_devices_infos.get('dev_addr')
-    log.info(f"Dev EUI: {dev_eui}")
-    log.info(f"Dev Addr: {dev_addr}")
-    message = payload.get('uplink_message')
-    frame_payload = message.get('frm_payload')
-    # from base64 to string
-    temperature = base64.b64decode(frame_payload)
-    # temperature = temperature.decode('utf-8')
-    log.info(f"Temperature: {temperature}")
-    log.debug(f"Message keys: {message.keys()}")
-    correlation_ids = payload.get('correlation_ids')
-    log.debug(f"Correlation ids: {correlation_ids}")
-        
+    if "/join" in topic:
+        ret = client.e2l_module.handle_otaa_join_request(dev_id = dev_id, dev_eui= dev_eui, dev_addr = dev_addr)
+        return ret
+    up_msg = payload.get("uplink_message")
+    up_port = up_msg.get("f_port")
+    uplink_message = payload.get('uplink_message')
+    frame_payload = uplink_message.get('frm_payload')
+    ret = 0
+    if up_port == DEFAULT_APP_PORT:
+        log.debug("Received Legacy Frame")
+        return client.e2l_module.handle_legacy_data(dev_id, dev_eui, dev_addr, frame_payload)
+    elif up_port == DEFAULT_E2L_JOIN_PORT:
+        log.debug("Received Edge Join Frame")
+        ret = client.e2l_module.handle_edge_join_request(
+            dev_id = dev_id,
+            dev_eui = dev_eui,
+            dev_addr = dev_addr,
+            dev_pub_key_compressed_base_64 = frame_payload)
+    elif up_port == DEFAULT_E2L_APP_PORT:
+        log.debug("Received Edge Frame")
+        ret = client.e2l_module.handle_edge_data_from_legacy(dev_id, dev_eui, dev_addr, frame_payload)
+    else:
+        log.warning(f"Unknown frame port: {up_port}")
+    
+    if ret < 0 :
+        log.error(f"Error handling frame: {ret}")
+
+    return ret
+
 def edge_callback(data):
     log.debug(f"Received data: {data}")
     return data
 
 if __name__ == '__main__':
     log.info('Starting...')
+    #####################
+    #   CHECK ENV VARS  #
+    #####################
     check_env_vars()
 
-    rpc_service = RPCModuleService()
-    rpc_service.register_function(edge_callback)
+    #####################
+    #   INIT E2L MODULE #
+    #####################
+    dashboard_rpc_endpoint = f'{os.getenv("DASHBOARD_RPC_HOST")}:{os.getenv("DASHBOARD_RPC_PORT")}'
+    e2l_module = E2LoRaModule(dashboard_rpc_endpoint=dashboard_rpc_endpoint)
+    e2l_module.start_dashboard_update_loop()
 
-    log.debug('Starting RPC server...')
-    server = ThreadedServer(
-        rpc_service,
-        port=18861,
-        protocol_config = {"allow_public_attrs" : True}
-    )
-    server.start()
+    #####################
+    #   INIT RPC SERVER #
+    #####################
+    rpc_server_instance = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    e2l_server = Edge2LoRaApplicationServer(e2l_module=e2l_module)
+    edge2applicationserver_pb2_grpc.add_Edge2ApplicationServerServicer_to_server(
+        e2l_server, rpc_server_instance
+        )
+    rpc_server_instance.add_insecure_port('[::]:50051')
+    rpc_server_instance.start()
     log.info('Started RPC server')
 
-    
-
+    #########################
+    #   INIT MQTT CLIENT    #
+    #########################
     log.debug("Connecting to MQTT broker...")
-    mqqt_client = MQTTModule(
-        username= os.getenv('MQTT_USERNAME'),
-        password= os.getenv('MQTT_PASSWORD'),
-        host= os.getenv('MQTT_HOST'),
-        port = int(os.getenv('MQTT_PORT'))
-    )
+    mqqt_client = MQTTModule(username=os.getenv('MQTT_USERNAME'),
+                             password=os.getenv('MQTT_PASSWORD'),
+                             host=os.getenv('MQTT_HOST'),
+                             port=int(os.getenv('MQTT_PORT')),
+                             e2l_module = e2l_module)
     log.debug("Connected to MQTT broker")
-    
-    topic = os.getenv('MQTT_TOPIC')
-    log.debug(f"Subscribing to MQTT topic {topic}...")
-    mqqt_client.subscribe_to_topic(
-        topic=topic,
-        callback=subscribe_callback
-    )
-    log.debug(f"Subscribed to MQTT topic {topic}")
 
-    log.debug("Waiting for messages...")
+    # SUBSCRIBE TO TOPIC
+    uplink_topic = os.getenv('MQTT_UPLINK_TOPIC')
+    join_topic = os.getenv('MQTT_OTAA_TOPIC')
+    log.debug(f"Subscribing to MQTT topic {uplink_topic}...")
+    mqqt_client.subscribe_to_topic(topic=uplink_topic, callback=subscribe_callback)
+    log.debug(f"Subscribed to MQTT topic {uplink_topic}")
+    log.debug(f"Subscribing to MQTT topic {join_topic}...")
+    mqqt_client.subscribe_to_topic(topic=join_topic, callback=subscribe_callback)
+    log.debug(f"Subscribed to MQTT topic {join_topic}")
+
+    # PASS MQTT CLIENT TO E2L MODULE
+    e2l_module.set_mqtt_client(mqqt_client)
+
+    log.info("Waiting for messages from MQTT broker...")
     mqqt_client.wait_for_message()
 
     log.warning('Done, should never reach this point!')
-
-
-
+    sys.exit(0)
