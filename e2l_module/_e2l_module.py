@@ -174,30 +174,46 @@ class E2LoRaModule:
             "gw_1_transmitted_frame_num": gw_1_info.get("tx", 0),
             "gw_2_received_frame_num": gw_2_info.get("rx", 0),
             "gw_2_transmitted_frame_num": gw_2_info.get("tx", 0),
-            "ns_received_frame_frame_num": ns_info.get("rx", 0),
-            "ns_transmitted_frame_frame_num": ns_info.get("tx", 0),
-            "module_received_frame_frame_num": dm_info.get("rx_legacy_frames", 0)
+            "ns_receivedframe_num": ns_info.get("rx", 0),
+            "ns_transmitted_frame_num": ns_info.get("tx", 0),
+            "dm_received_frames": dm_info.get("rx_legacy_frames", 0)
             + dm_info.get("rx_e2l_frames", 0),
+            "dm_received_legacy_frame": dm_info.get("rx_legacy_frames", 0),
+            "dm_received_e2l_frame": dm_info.get("rx_e2l_frames", 0),
             "aggregation_function_result": self.statistics.get("aggregation_result", 0),
         }
         if self.last_stats is not None:
             stats_data = {
-                "gw_1_received_frame_num": gw_1_info.get("rx", 0)
-                - self.last_stats.get("gw_1_received_frame_num", 0),
-                "gw_1_transmitted_frame_num": gw_1_info.get("tx", 0)
-                - self.last_stats.get("gw_1_transmitted_frame_num", 0),
-                "gw_2_received_frame_num": gw_2_info.get("rx", 0)
-                - self.last_stats.get("gw_2_received_frame_num", 0),
-                "gw_2_transmitted_frame_num": gw_2_info.get("tx", 0)
-                - self.last_stats.get("gw_2_transmitted_frame_num", 0),
-                "ns_received_frame_frame_num": ns_info.get("rx", 0)
-                - self.last_stats.get("ns_received_frame_frame_num", 0),
-                "ns_transmitted_frame_frame_num": ns_info.get("tx", 0)
-                - self.last_stats.get("ns_transmitted_frame_frame_num", 0),
-                "module_received_frame_frame_num": (
-                    dm_info.get("rx_legacy_frames", 0) + dm_info.get("rx_e2l_frames", 0)
+                "gw_1_received_frame_num": new_stats_data.get(
+                    "gw_1_received_frame_num", 0
                 )
-                - self.last_stats.get("module_received_frame_frame_num", 0),
+                - self.last_stats.get("gw_1_received_frame_num", 0),
+                "gw_1_transmitted_frame_num": new_stats_data.get(
+                    "gw1_transmitted_frame_num", 0
+                )
+                - self.last_stats.get("gw_1_transmitted_frame_num", 0),
+                "gw_2_received_frame_num": new_stats_data.get(
+                    "gw_2_received_frame_num", 0
+                )
+                - self.last_stats.get("gw_2_received_frame_num", 0),
+                "gw_2_transmitted_frame_num": new_stats_data.get(
+                    "gw_2_transmitted_frame_num", 0
+                )
+                - self.last_stats.get("gw_2_transmitted_frame_num", 0),
+                "ns_received_frame_num": new_stats_data.get("ns_received_frame_num", 0)
+                - self.last_stats.get("ns_received_frame_num", 0),
+                "ns_transmitted_frame_num": new_stats_data.get(
+                    "ns_transmitted_frame_num", 0
+                )
+                - self.last_stats.get("ns_transmitted_frame_num", 0),
+                "dm_received_frames": new_stats_data.get("module_received_frame_num", 0)
+                - self.last_stats.get("module_received_frame_num", 0),
+                "dm_received_legacy_frame": new_stats_data.get(
+                    "dm_received_legacy_frame", 0
+                )
+                - self.last_stats.get("dm_received_legacy_frame", 0),
+                "dm_received_e2l_frame": new_stats_data.get("dm_received_e2l_frame", 0)
+                - self.last_stats.get("dm_received_e2l_frame", 0),
                 "aggregation_function_result": self.statistics.get(
                     "aggregation_result", 0
                 ),
