@@ -9,6 +9,8 @@ from .__private__ import demo_pb2_grpc, SendStatistics, SendLogMessage, SendJoin
 import json
 import hashlib
 from threading import Thread
+from pymongo import MongoClient
+from datetime import datetime
 
 DEBUG = os.getenv('DEBUG', False)
 DEBUG = True if DEBUG == '1' else False
@@ -47,7 +49,7 @@ class E2LoRaModule():
     """
     This class is handle the Edge2LoRa Protocol.
     """
-    def __init__(self, dashboard_rpc_endpoint):
+    def __init__(self, dashboard_rpc_endpoint, experiment_id):
         # Generate ephimeral ecc private/public key pair
         self.ephimeral_private_key = ECC.generate(curve='P-256')
         self.ephimeral_public_key = self.ephimeral_private_key.public_key()
@@ -74,13 +76,29 @@ class E2LoRaModule():
         self.e2gw_ids = []
         self.e2ed_ids = []
         self.ed_ids = []
-        # Init RPC Client
-        channel = grpc.insecure_channel(dashboard_rpc_endpoint)
-        try:
-            self.dashboard_rpc_stub = demo_pb2_grpc.GRPCDemoStub(channel)
-            # self.dashboard_rpc_stub = None
-        except:
-            self.dashboard_rpc_stub = None
+        # Setup experiment
+        self.default_sleep_seconds = 5
+        self.experiment_id = None
+        self.db_client = None
+        self.db = None
+        self.collection = None
+        self.dashboard_rpc_stub = None
+        if experiment_id is not None:
+            self.experiment_id = experiment_id
+            self.db_client = MongoClient(os.getenv("MONGODB_HOST"), os.getenv("MONGOIDB_PORT"))
+            self.db = self.db_client["experiments_db"]
+            if experiment_id not in self.db.list_collection_names():
+                self.db.create_collection(experiment_id)
+                self.collection = self.db[experiment_id]
+            else:
+                # raise exception
+                raise Exception("Experiment ID already exists, please change the experiment ID.")
+        else:
+            try:
+                channel = grpc.insecure_channel(dashboard_rpc_endpoint)
+                self.dashboard_rpc_stub = demo_pb2_grpc.GRPCDemoStub(channel)
+            except:
+                self.dashboard_rpc_stub = None
         # MQTT CLIENT
         self.mqtt_client = None
         # Aggregation Utils
@@ -90,6 +108,10 @@ class E2LoRaModule():
         self.ed_2_gw_selection = None
         self.ed_3_gw_selection = None
 
+    def _get_now_isostring(self):
+        # get current daste time in ISOString format
+        return f'{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]}Z'
+
     """
         @brief: this function send log to the dashboard
         @param type: log type <LOG_GW1|LOG_GW2|LOG_ED>
@@ -97,23 +119,31 @@ class E2LoRaModule():
     """
     def _send_log(self, type, message):
         if self.dashboard_rpc_stub is None:
+            log_obj = {
+                "_id": self._get_now_isostring(),
+                "type": "log",
+                "key_agreement_log_message_node_id" : type,
+                "key_agreement_message_log" : message,
+                "key_agreement_process_time" : 0,
+            }
             return
-        request = SendLogMessage(
-            client_id = 1,
-            message_data = "",
-            key_agreement_log_message_node_id = type,
-            key_agreement_message_log = message,
-            key_agreement_process_time = 0,
-        )
-        log.info(f'Sending log to dashboard: {type}\t{message}')
-        response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
+        else:
+            request = SendLogMessage(
+                client_id = 1,
+                message_data = "",
+                key_agreement_log_message_node_id = type,
+                key_agreement_message_log = message,
+                key_agreement_process_time = 0,
+            )
+            log.info(f'Sending log to dashboard: {type}\t{message}')
+            response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
 
     """
         @brief  This function collect the stats and return a SendStatistics object
         @return The updated SendStatistics object
     """
     def _get_stats(self):
-        for i in range(1):
+        if self.dashboard_rpc_stub is None:
             gw_1_info = {}
             gw_2_info = {}
             if(len(self.e2gw_ids) > 0):
@@ -122,20 +152,41 @@ class E2LoRaModule():
                 gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
             ns_info = self.statistics.get("ns", {})
             dm_info = self.statistics.get("dm", {})
-            request = SendStatistics(
-                client_id = 1,
-                message_data = "",
-                gw_1_received_frame_num = gw_1_info.get("rx", 0),
-                gw_1_transmitted_frame_num = gw_1_info.get("tx", 0),
-                gw_2_received_frame_num = gw_2_info.get("rx", 0),
-                gw_2_transmitted_frame_num = gw_2_info.get("tx", 0),
-                ns_received_frame_frame_num = ns_info.get("rx", 0),
-                ns_transmitted_frame_frame_num = ns_info.get("tx", 0),
-                module_received_frame_frame_num = dm_info.get("rx_legacy_frames", 0) + dm_info.get("rx_e2l_frames", 0),
-                aggregation_function_result = self.statistics.get("aggregation_result", 0)
-            )
-            yield request
-            # time.sleep(5)
+            stats_data = {
+                "gw_1_received_frame_num" : gw_1_info.get("rx", 0),
+                "gw_1_transmitted_frame_num" : gw_1_info.get("tx", 0),
+                "gw_2_received_frame_num" : gw_2_info.get("rx", 0),
+                "gw_2_transmitted_frame_num" : gw_2_info.get("tx", 0),
+                "ns_received_frame_frame_num" : ns_info.get("rx", 0),
+                "ns_transmitted_frame_frame_num" : ns_info.get("tx", 0),
+                "module_received_frame_frame_num" : dm_info.get("rx_legacy_frames", 0) + dm_info.get("rx_e2l_frames", 0),
+                "aggregation_function_result" : self.statistics.get("aggregation_result", 0)
+            }
+            return stats_data
+        else:
+            for i in range(1):
+                gw_1_info = {}
+                gw_2_info = {}
+                if(len(self.e2gw_ids) > 0):
+                    gw_1_info = self.statistics["gateways"][self.e2gw_ids[0]]
+                if(len(self.e2gw_ids) > 1):
+                    gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
+                ns_info = self.statistics.get("ns", {})
+                dm_info = self.statistics.get("dm", {})
+                request = SendStatistics(
+                    client_id = 1,
+                    message_data = "",
+                    gw_1_received_frame_num = gw_1_info.get("rx", 0),
+                    gw_1_transmitted_frame_num = gw_1_info.get("tx", 0),
+                    gw_2_received_frame_num = gw_2_info.get("rx", 0),
+                    gw_2_transmitted_frame_num = gw_2_info.get("tx", 0),
+                    ns_received_frame_frame_num = ns_info.get("rx", 0),
+                    ns_transmitted_frame_frame_num = ns_info.get("tx", 0),
+                    module_received_frame_frame_num = dm_info.get("rx_legacy_frames", 0) + dm_info.get("rx_e2l_frames", 0),
+                    aggregation_function_result = self.statistics.get("aggregation_result", 0)
+                )
+                yield request
+                # time.sleep(5)
 
     """
         @brief: This function updated the paramenters according to the settings of the dashboard.
@@ -257,7 +308,15 @@ class E2LoRaModule():
                                     log_message = f'Removed E2ED {e2ed_addr} from E2GW'
                                     self.handle_edge_data(gw_id=old_e2gw_id, dev_eui=dev_eui,dev_addr= e2ed_addr,aggregated_data= e2ed_data.aggregated_data,delta_time= 0, gw_log_message = log_message)
 
-                    
+    def _update_db(self):
+        while(True):
+            time.sleep(self.default_sleep_seconds)
+            stats_obj = self._get_stats()
+            stats_obj["_id"] = self._get_now_isostring()
+            stats_obj["type"] = "stats"
+            self.collection.insert_one(stats_obj)
+
+
     """
         @brief  This function is used to periodically send the stats to the dashboard, and get the new settings.
         @return None
@@ -285,7 +344,7 @@ class E2LoRaModule():
                 log.error("Unknown aggregation function. Setting to AVG.")
             window_size = response.process_window
             self._update_params(ed_1_gw_selection, ed_2_gw_selection, ed_3_gw_selection, aggregation_function, window_size)
-            time.sleep(5)
+            time.sleep(self.default_sleep_seconds)
 
     """
         @brief  This function is used to send a downlink frame to a ED.
@@ -617,9 +676,12 @@ class E2LoRaModule():
     """
     def start_dashboard_update_loop(self):
         if self.dashboard_rpc_stub is None:
+            self.db_update_loop = Thread(target=self._update_db)
+            self.db_update_loop.start()
             return
-        self.dashboard_update_loop = Thread(target=self._update_dashboard)
-        self.dashboard_update_loop.start()
+        else:
+            self.dashboard_update_loop = Thread(target=self._update_dashboard)
+            self.dashboard_update_loop.start()
 
     """
         @brief  This function handle the gateway log.

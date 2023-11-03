@@ -35,6 +35,7 @@ def check_env_vars() -> bool:
     env_vars = [
         "MQTT_USERNAME", "MQTT_PASSWORD", "MQTT_HOST", "MQTT_PORT",
         "MQTT_BASE_TOPIC", "MQTT_UPLINK_TOPIC", "MQTT_OTAA_TOPIC", "DASHBOARD_RPC_HOST", "DASHBOARD_RPC_PORT",
+        "RPC_SERVER_PORT"
     ]
     for var in env_vars:
         if os.getenv(var) is None:
@@ -104,12 +105,21 @@ if __name__ == '__main__':
     #   CHECK ENV VARS  #
     #####################
     check_env_vars()
+    
+    #####################
+    #   GET LINE ARGS   #
+    #####################
+    experiment_id = None
+    if len(sys.argv) > 1:
+        experiment_id = sys.argv[1]
 
     #####################
     #   INIT E2L MODULE #
     #####################
-    dashboard_rpc_endpoint = f'{os.getenv("DASHBOARD_RPC_HOST")}:{os.getenv("DASHBOARD_RPC_PORT")}'
-    e2l_module = E2LoRaModule(dashboard_rpc_endpoint=dashboard_rpc_endpoint)
+    dashboard_rpc_endpoint = None
+    if experiment_id is None:
+        dashboard_rpc_endpoint = f'{os.getenv("DASHBOARD_RPC_HOST")}:{os.getenv("DASHBOARD_RPC_PORT")}'
+    e2l_module = E2LoRaModule(dashboard_rpc_endpoint=dashboard_rpc_endpoint, experiment_id = experiment_id)
     e2l_module.start_dashboard_update_loop()
 
     #####################
@@ -120,7 +130,7 @@ if __name__ == '__main__':
     edge2applicationserver_pb2_grpc.add_Edge2ApplicationServerServicer_to_server(
         e2l_server, rpc_server_instance
         )
-    rpc_server_instance.add_insecure_port('[::]:50051')
+    rpc_server_instance.add_insecure_port(f'[::]:{os.getenv("RPC_SERVER_PORT")}')
     rpc_server_instance.start()
     log.info('Started RPC server')
 
