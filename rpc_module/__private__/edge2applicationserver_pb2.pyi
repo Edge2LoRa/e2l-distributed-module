@@ -47,3 +47,19 @@ class GWLog(_message.Message):
     log: str
     frame_type: int
     def __init__(self, gw_id: _Optional[str] = ..., dev_addr: _Optional[str] = ..., log: _Optional[str] = ..., frame_type: _Optional[int] = ...) -> None: ...
+
+class SysLog(_message.Message):
+    __slots__ = ["gw_id", "memory_usage", "memory_available", "cpu_usage", "data_received", "data_transmitted"]
+    GW_ID_FIELD_NUMBER: _ClassVar[int]
+    MEMORY_USAGE_FIELD_NUMBER: _ClassVar[int]
+    MEMORY_AVAILABLE_FIELD_NUMBER: _ClassVar[int]
+    CPU_USAGE_FIELD_NUMBER: _ClassVar[int]
+    DATA_RECEIVED_FIELD_NUMBER: _ClassVar[int]
+    DATA_TRANSMITTED_FIELD_NUMBER: _ClassVar[int]
+    gw_id: str
+    memory_usage: int
+    memory_available: int
+    cpu_usage: float
+    data_received: int
+    data_transmitted: int
+    def __init__(self, gw_id: _Optional[str] = ..., memory_usage: _Optional[int] = ..., memory_available: _Optional[int] = ..., cpu_usage: _Optional[float] = ..., data_received: _Optional[int] = ..., data_transmitted: _Optional[int] = ...) -> None: ...

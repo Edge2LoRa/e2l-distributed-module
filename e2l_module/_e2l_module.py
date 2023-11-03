@@ -55,6 +55,11 @@ MAX_ID = 4
 EDGE_FRAME = 1
 LEGACY_FRAME = 2
 
+# MONGO DB DOC TYPE
+STATS_DOC_TYPE = "stats"
+LOG_DOC_TYPE = "logs"
+SYS_DOC_TYPE = "sys"
+
 
 class E2LoRaModule:
     """
@@ -138,11 +143,12 @@ class E2LoRaModule:
         if self.dashboard_rpc_stub is None:
             log_obj = {
                 "_id": self._get_now_isostring(),
-                "type": "log",
+                "type": LOG_DOC_TYPE,
                 "key_agreement_log_message_node_id": type,
                 "key_agreement_message_log": message,
                 "key_agreement_process_time": 0,
             }
+            self.collection.insert_one(log_obj)
             return
         else:
             request = SendLogMessage(
@@ -425,7 +431,7 @@ class E2LoRaModule:
             time.sleep(self.default_sleep_seconds)
             stats_obj = self._get_db_stats()
             stats_obj["_id"] = self._get_now_isostring()
-            stats_obj["type"] = "stats"
+            stats_obj["type"] = STATS_DOC_TYPE
             log.debug("Pushing new stats obj to DB...")
             self.collection.insert_one(stats_obj)
             log.debug("Stats pushed to DB.")
@@ -901,6 +907,31 @@ class E2LoRaModule:
         else:
             log.warning("Unknown frame type")
 
+        return 0
+
+    def handle_sys_log(
+        self,
+        gw_id,
+        memory_usage,
+        memory_available,
+        cpu_usage,
+        data_received,
+        data_transmitted,
+    ):
+        if self.collection is None or gw_id not in self.e2gw_ids:
+            return -1
+        gw_sys_stats = {
+            "_id": self._get_now_isostring(),
+            "gw_id": gw_id,
+            "memory_usage": memory_usage,
+            "memory_available": memory_available,
+            "cpu_usage": cpu_usage,
+            "data_received": data_received,
+            "data_transmitted": data_transmitted,
+            "type": SYS_DOC_TYPE,
+        }
+        log.debug("Pushing sys stats in DB")
+        self.collection.insert_one(gw_sys_stats)
         return 0
 
     """
