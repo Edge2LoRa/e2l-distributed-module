@@ -118,6 +118,12 @@ class E2LoRaModule:
         self.ed_2_gw_selection = None
         self.ed_3_gw_selection = None
 
+    """
+        @brief: this function return the current date and time in ISOString.
+        @return: ISOString (str)
+        @note: "YYYY-mm-ddTHH:MM:SS.fffZ"
+    """
+
     def _get_now_isostring(self):
         # get current daste time in ISOString format
         return f'{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]}Z'
@@ -150,12 +156,64 @@ class E2LoRaModule:
             response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
 
     """
+        @brief  This function collect the stats
+        @return The updated dict containing the stats
+    """
+
+    def _get_db_stats(self):
+        gw_1_info = {}
+        gw_2_info = {}
+        if len(self.e2gw_ids) > 0:
+            gw_1_info = self.statistics["gateways"][self.e2gw_ids[0]]
+        if len(self.e2gw_ids) > 1:
+            gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
+        ns_info = self.statistics.get("ns", {})
+        dm_info = self.statistics.get("dm", {})
+        new_stats_data = {
+            "gw_1_received_frame_num": gw_1_info.get("rx", 0),
+            "gw_1_transmitted_frame_num": gw_1_info.get("tx", 0),
+            "gw_2_received_frame_num": gw_2_info.get("rx", 0),
+            "gw_2_transmitted_frame_num": gw_2_info.get("tx", 0),
+            "ns_received_frame_frame_num": ns_info.get("rx", 0),
+            "ns_transmitted_frame_frame_num": ns_info.get("tx", 0),
+            "module_received_frame_frame_num": dm_info.get("rx_legacy_frames", 0)
+            + dm_info.get("rx_e2l_frames", 0),
+            "aggregation_function_result": self.statistics.get("aggregation_result", 0),
+        }
+        if self.last_stats is not None:
+            stats_data = {
+                "gw_1_received_frame_num": gw_1_info.get("rx", 0)
+                - self.last_stats.get("gw_1_received_frame_num", 0),
+                "gw_1_transmitted_frame_num": gw_1_info.get("tx", 0)
+                - self.last_stats.get("gw_1_transmitted_frame_num", 0),
+                "gw_2_received_frame_num": gw_2_info.get("rx", 0)
+                - self.last_stats.get("gw_2_received_frame_num", 0),
+                "gw_2_transmitted_frame_num": gw_2_info.get("tx", 0)
+                - self.last_stats.get("gw_2_transmitted_frame_num", 0),
+                "ns_received_frame_frame_num": ns_info.get("rx", 0)
+                - self.last_stats.get("ns_received_frame_frame_num", 0),
+                "ns_transmitted_frame_frame_num": ns_info.get("tx", 0)
+                - self.last_stats.get("ns_transmitted_frame_frame_num", 0),
+                "module_received_frame_frame_num": (
+                    dm_info.get("rx_legacy_frames", 0) + dm_info.get("rx_e2l_frames", 0)
+                )
+                - self.last_stats.get("module_received_frame_frame_num", 0),
+                "aggregation_function_result": self.statistics.get(
+                    "aggregation_result", 0
+                ),
+            }
+        else:
+            stats_data = new_stats_data
+        self.last_stats = new_stats_data
+        return stats_data
+
+    """
         @brief  This function collect the stats and return a SendStatistics object
         @return The updated SendStatistics object
     """
 
     def _get_stats(self):
-        if self.dashboard_rpc_stub is None:
+        for i in range(1):
             gw_1_info = {}
             gw_2_info = {}
             if len(self.e2gw_ids) > 0:
@@ -164,73 +222,23 @@ class E2LoRaModule:
                 gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
             ns_info = self.statistics.get("ns", {})
             dm_info = self.statistics.get("dm", {})
-            new_stats_data = {
-                "gw_1_received_frame_num": gw_1_info.get("rx", 0),
-                "gw_1_transmitted_frame_num": gw_1_info.get("tx", 0),
-                "gw_2_received_frame_num": gw_2_info.get("rx", 0),
-                "gw_2_transmitted_frame_num": gw_2_info.get("tx", 0),
-                "ns_received_frame_frame_num": ns_info.get("rx", 0),
-                "ns_transmitted_frame_frame_num": ns_info.get("tx", 0),
-                "module_received_frame_frame_num": dm_info.get("rx_legacy_frames", 0)
+            request = SendStatistics(
+                client_id=1,
+                message_data="",
+                gw_1_received_frame_num=gw_1_info.get("rx", 0),
+                gw_1_transmitted_frame_num=gw_1_info.get("tx", 0),
+                gw_2_received_frame_num=gw_2_info.get("rx", 0),
+                gw_2_transmitted_frame_num=gw_2_info.get("tx", 0),
+                ns_received_frame_frame_num=ns_info.get("rx", 0),
+                ns_transmitted_frame_frame_num=ns_info.get("tx", 0),
+                module_received_frame_frame_num=dm_info.get("rx_legacy_frames", 0)
                 + dm_info.get("rx_e2l_frames", 0),
-                "aggregation_function_result": self.statistics.get(
+                aggregation_function_result=self.statistics.get(
                     "aggregation_result", 0
                 ),
-            }
-            if self.last_stats is not None:
-                stats_data = {
-                    "gw_1_received_frame_num": gw_1_info.get("rx", 0)
-                    - self.last_stats.get("gw_1_received_frame_num", 0),
-                    "gw_1_transmitted_frame_num": gw_1_info.get("tx", 0)
-                    - self.last_stats.get("gw_1_transmitted_frame_num", 0),
-                    "gw_2_received_frame_num": gw_2_info.get("rx", 0)
-                    - self.last_stats.get("gw_2_received_frame_num", 0),
-                    "gw_2_transmitted_frame_num": gw_2_info.get("tx", 0)
-                    - self.last_stats.get("gw_2_transmitted_frame_num", 0),
-                    "ns_received_frame_frame_num": ns_info.get("rx", 0)
-                    - self.last_stats.get("ns_received_frame_frame_num", 0),
-                    "ns_transmitted_frame_frame_num": ns_info.get("tx", 0)
-                    - self.last_stats.get("ns_transmitted_frame_frame_num", 0),
-                    "module_received_frame_frame_num": (
-                        dm_info.get("rx_legacy_frames", 0)
-                        + dm_info.get("rx_e2l_frames", 0)
-                    )
-                    - self.last_stats.get("module_received_frame_frame_num", 0),
-                    "aggregation_function_result": self.statistics.get(
-                        "aggregation_result", 0
-                    ),
-                }
-            else:
-                stats_data = new_stats_data
-            self.last_stats = new_stats_data
-            return stats_data
-        else:
-            for i in range(1):
-                gw_1_info = {}
-                gw_2_info = {}
-                if len(self.e2gw_ids) > 0:
-                    gw_1_info = self.statistics["gateways"][self.e2gw_ids[0]]
-                if len(self.e2gw_ids) > 1:
-                    gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
-                ns_info = self.statistics.get("ns", {})
-                dm_info = self.statistics.get("dm", {})
-                request = SendStatistics(
-                    client_id=1,
-                    message_data="",
-                    gw_1_received_frame_num=gw_1_info.get("rx", 0),
-                    gw_1_transmitted_frame_num=gw_1_info.get("tx", 0),
-                    gw_2_received_frame_num=gw_2_info.get("rx", 0),
-                    gw_2_transmitted_frame_num=gw_2_info.get("tx", 0),
-                    ns_received_frame_frame_num=ns_info.get("rx", 0),
-                    ns_transmitted_frame_frame_num=ns_info.get("tx", 0),
-                    module_received_frame_frame_num=dm_info.get("rx_legacy_frames", 0)
-                    + dm_info.get("rx_e2l_frames", 0),
-                    aggregation_function_result=self.statistics.get(
-                        "aggregation_result", 0
-                    ),
-                )
-                yield request
-                # time.sleep(5)
+            )
+            yield request
+            # time.sleep(5)
 
     """
         @brief: This function updated the paramenters according to the settings of the dashboard.
@@ -399,10 +407,12 @@ class E2LoRaModule:
     def _update_db(self):
         while True:
             time.sleep(self.default_sleep_seconds)
-            stats_obj = self._get_stats()
+            stats_obj = self._get_db_stats()
             stats_obj["_id"] = self._get_now_isostring()
             stats_obj["type"] = "stats"
+            log.debug("Pushing new stats obj to DB...")
             self.collection.insert_one(stats_obj)
+            log.debug("Stats pushed to DB.")
 
     """
         @brief  This function is used to periodically send the stats to the dashboard, and get the new settings.
