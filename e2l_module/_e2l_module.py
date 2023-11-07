@@ -173,6 +173,7 @@ class E2LoRaModule:
             gw_1_info = self.statistics["gateways"][self.e2gw_ids[0]]
         if len(self.e2gw_ids) > 1:
             gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
+        print(gw_1_info)
         ns_info = self.statistics.get("ns", {})
         dm_info = self.statistics.get("dm", {})
         new_stats_data = {
@@ -180,14 +181,15 @@ class E2LoRaModule:
             "gw_1_transmitted_frame_num": gw_1_info.get("tx", 0),
             "gw_2_received_frame_num": gw_2_info.get("rx", 0),
             "gw_2_transmitted_frame_num": gw_2_info.get("tx", 0),
-            "ns_receivedframe_num": ns_info.get("rx", 0),
+            "ns_received_frame_num": ns_info.get("rx", 0),
             "ns_transmitted_frame_num": ns_info.get("tx", 0),
-            "dm_received_frames": dm_info.get("rx_legacy_frames", 0)
+            "dm_received_frame_num": dm_info.get("rx_legacy_frames", 0)
             + dm_info.get("rx_e2l_frames", 0),
-            "dm_received_legacy_frame": dm_info.get("rx_legacy_frames", 0),
-            "dm_received_e2l_frame": dm_info.get("rx_e2l_frames", 0),
+            "dm_received_legacy_frame_num": dm_info.get("rx_legacy_frames", 0),
+            "dm_received_e2l_frame_num": dm_info.get("rx_e2l_frames", 0),
             "aggregation_function_result": self.statistics.get("aggregation_result", 0),
         }
+        stats_data = None
         if self.last_stats is not None:
             stats_data = {
                 "gw_1_received_frame_num": new_stats_data.get(
@@ -195,7 +197,7 @@ class E2LoRaModule:
                 )
                 - self.last_stats.get("gw_1_received_frame_num", 0),
                 "gw_1_transmitted_frame_num": new_stats_data.get(
-                    "gw1_transmitted_frame_num", 0
+                    "gw_1_transmitted_frame_num", 0
                 )
                 - self.last_stats.get("gw_1_transmitted_frame_num", 0),
                 "gw_2_received_frame_num": new_stats_data.get(
@@ -212,14 +214,14 @@ class E2LoRaModule:
                     "ns_transmitted_frame_num", 0
                 )
                 - self.last_stats.get("ns_transmitted_frame_num", 0),
-                "dm_received_frames": new_stats_data.get("module_received_frame_num", 0)
-                - self.last_stats.get("module_received_frame_num", 0),
-                "dm_received_legacy_frame": new_stats_data.get(
-                    "dm_received_legacy_frame", 0
+                "dm_received_frames_num": new_stats_data.get("dm_received_frames_num", 0)
+                - self.last_stats.get("dm_received_frames_num", 0),
+                "dm_received_legacy_frame_num": new_stats_data.get(
+                    "dm_received_legacy_frame_num", 0
                 )
-                - self.last_stats.get("dm_received_legacy_frame", 0),
-                "dm_received_e2l_frame": new_stats_data.get("dm_received_e2l_frame", 0)
-                - self.last_stats.get("dm_received_e2l_frame", 0),
+                - self.last_stats.get("dm_received_legacy_frame_num", 0),
+                "dm_received_e2l_frame_num": new_stats_data.get("dm_received_e2l_frame_num", 0)
+                - self.last_stats.get("dm_received_e2l_frame_num", 0),
                 "aggregation_function_result": self.statistics.get(
                     "aggregation_result", 0
                 ),
@@ -304,7 +306,7 @@ class E2LoRaModule:
         )
 
         # UPDATE ED 1 GW SELECTION
-        if len(self.e2gw_ids) >= ed_1_gw_selection:
+        if ed_1_gw_selection is not None and len(self.e2gw_ids) >= ed_1_gw_selection:
             self.ed_1_gw_selection = ed_1_gw_selection
             if len(self.e2ed_ids) > 0:
                 dev_eui = self.e2ed_ids[0]
@@ -344,7 +346,7 @@ class E2LoRaModule:
                                     )
 
         # UPDATE ED 2 GW SELECTION
-        if len(self.e2gw_ids) >= ed_2_gw_selection:
+        if ed_2_gw_selection is not None and len(self.e2gw_ids) >= ed_2_gw_selection:
             self.ed_2_gw_selection = ed_2_gw_selection
             if len(self.e2ed_ids) > 1:
                 dev_eui = self.e2ed_ids[1]
@@ -384,7 +386,7 @@ class E2LoRaModule:
                                     )
 
         # UPDATE ED 3 GW SELECTION
-        if len(self.e2gw_ids) >= ed_3_gw_selection:
+        if ed_3_gw_selection is not None and len(self.e2gw_ids) >= ed_3_gw_selection:
             self.ed_3_gw_selection = ed_3_gw_selection
             if len(self.e2ed_ids) > 2:
                 dev_eui = self.e2ed_ids[2]
@@ -812,9 +814,11 @@ class E2LoRaModule:
         )
         if gw_id not in self.e2gw_ids:
             return -1
-        self.statistics["gateways"][gw_id]["tx"] = (
-            self.statistics["gateways"][gw_id].get("tx", 0) + 1
-        )
+        self.statistics["gateways"][gw_id]["tx"] = self.statistics["gateways"][gw_id].get("tx", 0) + 1
+        print("##################################")
+        print(self.statistics)
+        print("##################################")
+        
         # for i in range(len(self.e2gw_ids)):
         #     if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
         #         continue
@@ -823,7 +827,7 @@ class E2LoRaModule:
         #         self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
 
         # SEND LOG
-        if self.e2ed_ids.index(dev_eui) == 0:
+        if dev_eui in self.e2ed_ids and self.e2ed_ids.index(dev_eui) == 0:
             self.statistics["aggregation_result"] = aggregated_data
         self._send_log(
             type=LOG_ED, message=f"E2L Frame Received by DM (Dev: {dev_addr})"
@@ -865,7 +869,7 @@ class E2LoRaModule:
     """
 
     def handle_gw_log(self, gw_id, dev_addr, log_message, frame_type):
-        if self.dashboard_rpc_stub is None or gw_id not in self.e2gw_ids:
+        if gw_id not in self.e2gw_ids:
             return -1
         # SEND LOG
         index = self.e2gw_ids.index(gw_id)
@@ -932,6 +936,13 @@ class E2LoRaModule:
         }
         log.debug("Pushing sys stats in DB")
         self.collection.insert_one(gw_sys_stats)
+        self._update_params(
+            None,
+            None,
+            None,
+            AVG_ID,
+            10,
+        )
         return 0
 
     """
