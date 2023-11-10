@@ -132,7 +132,7 @@ class E2LoRaModule:
 
     def _get_now_isostring(self):
         # get current daste time in ISOString format
-        return f'{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]}Z'
+        return f'{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")}Z'
 
     """
         @brief: this function send log to the dashboard
@@ -215,8 +215,8 @@ class E2LoRaModule:
                     "ns_transmitted_frame_num", 0
                 )
                 - self.last_stats.get("ns_transmitted_frame_num", 0),
-                "dm_received_frames_num": new_stats_data.get("dm_received_frames_num", 0)
-                - self.last_stats.get("dm_received_frames_num", 0),
+                "dm_received_frame_num": new_stats_data.get("dm_received_frame_num", 0)
+                - self.last_stats.get("dm_received_frame_num", 0),
                 "dm_received_legacy_frame_num": new_stats_data.get(
                     "dm_received_legacy_frame_num", 0
                 )
