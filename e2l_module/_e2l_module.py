@@ -10,6 +10,9 @@ from e2gw_rpc_client import (
     EdPubInfo,
     AggregationParams,
     E2LDeviceInfo,
+    E2LDevicesInfoComplete,
+    Device,
+    ActiveFlag,
 )
 from .__private__ import (
     demo_pb2_grpc,
@@ -98,7 +101,7 @@ class E2LoRaModule:
         if experiment_id is not None:
             self.experiment_id = experiment_id
             self.db_client = MongoClient(
-                os.getenv("MONGODB_HOST"), os.getenv("MONGOIDB_PORT")
+                os.getenv("MONGODB_HOST"), os.getenv("MONGODB_PORT")
             )
             self.db = self.db_client["experiments_db"]
             if experiment_id not in self.db.list_collection_names():
@@ -123,11 +126,73 @@ class E2LoRaModule:
         self.ed_1_gw_selection = None
         self.ed_2_gw_selection = None
         self.ed_3_gw_selection = None
+        # Load Device JSON
+        if self.collection is not None:
+            self._load_device_json()
+        self.gw_shut_time = os.getenv("GW_SHUT_TIMER")
+        if self.gw_shut_time is None:
+            self.gw_shut_time = 0
+
+    def _load_device_json(self):
+        filename = os.getenv("DEVICE_LIST_FILE")
+        if filename is None:
+            return
+        device_list = []
+        with open(filename, "r") as file:
+            device_list = json.load(file)
+        for device in device_list:
+            dev_id = device.get("ids", {}).get("dev_id")
+            dev_eui = device.get("ids", {}).get("dev_eui")
+            dev_addr = device.get("session", {}).get("dev_addr")
+            edgeSIntKey = (
+                device.get("session", {})
+                .get("keys", {})
+                .get("app_s_key", {})
+                .get("key")
+            )
+            edgeSEncKey = (
+                device.get("session", {})
+                .get("keys", {})
+                .get("f_nwk_s_int_key", {})
+                .get("key")
+            )
+            if self.statistics.get("devices").get(dev_eui) is None:
+                self.statistics["devices"][dev_eui] = {
+                    "dev_addr": dev_addr,
+                    "legacy_frames": 0,
+                    "edge_frames": 0,
+                }
+            else:
+                self.statistics["devices"][dev_eui]["dev_addr"] = dev_addr
+
+            if dev_eui not in self.ed_ids:
+                self.e2ed_ids.append(dev_eui)
+
+            dev_obj = {
+                "dev_id": dev_id,
+                "dev_eui": dev_eui,
+                "dev_addr": dev_addr,
+                "e2gw": None,
+                "edgeSIntKey": edgeSIntKey,
+                "edgeSEncKey": edgeSEncKey,
+            }
+            self.active_directory["e2eds"][dev_eui] = dev_obj
+
+    def _shut_gw(self):
+        time.sleep(self.gw_shut_time)
+        if len(self.e2gw_ids) > 1:
+            gw_id = self.e2gw_ids.pop(1)
+            gw_info = self.active_directory["e2gws"].pop(gw_id)
+            gw_stub = gw_info.get("stub")
+            if gw_stub is not None:
+                gw_stub.set_active(ActiveFlag(active=False))
+
+        return
 
     """
         @brief: this function return the current date and time in ISOString.
         @return: ISOString (str)
-        @note: "YYYY-mm-ddTHH:MM:SS.fffZ"
+        @note: "YYYY-mm-ddTHH:MM:SS.ffffffZ"
     """
 
     def _get_now_isostring(self):
@@ -221,7 +286,9 @@ class E2LoRaModule:
                     "dm_received_legacy_frame_num", 0
                 )
                 - self.last_stats.get("dm_received_legacy_frame_num", 0),
-                "dm_received_e2l_frame_num": new_stats_data.get("dm_received_e2l_frame_num", 0)
+                "dm_received_e2l_frame_num": new_stats_data.get(
+                    "dm_received_e2l_frame_num", 0
+                )
                 - self.last_stats.get("dm_received_e2l_frame_num", 0),
                 "aggregation_function_result": self.statistics.get(
                     "aggregation_result", 0
@@ -477,9 +544,14 @@ class E2LoRaModule:
             )
             time.sleep(self.default_sleep_seconds)
 
+    """
+        @brief  This function is used to periodically send the resources stats of the DM to the DB.
+        @return None
+    """
+
     def _monitor_resource(self):
-        while(True):
-            mem_info  = psutil.virtual_memory()
+        while True:
+            mem_info = psutil.virtual_memory()
             memory_usage = mem_info.used
             memory_available = mem_info.available
             cpu_usage = psutil.cpu_percent()
@@ -585,7 +657,35 @@ class E2LoRaModule:
             log_type = None
         if log_type is not None:
             self._send_log(type=log_type, message=log_message)
-        return 0
+
+        if self.collection is None:
+            return 0
+
+        # Check the preloaded devices
+        total_devices = len(self.e2ed_ids)
+        device_list = []
+        for dev_eui in self.e2ed_ids:
+            if (
+                self.active_directory["e2eds"].get(dev_eui) is not None
+                and self.active_directory["e2eds"]["dev_eui"].get("e2gw") is None
+                and len(device_list) < total_devices / 2
+            ):
+                self.active_directory["e2eds"][dev_eui][
+                    "e2gw"
+                ] = gw_rpc_endpoint_address
+                device_list.append(
+                    Device(
+                        dev_eui=dev_eui,
+                        dev_addr=self.active_directory["e2eds"][dev_eui]["dev_addr"],
+                        edge_s_enc_key=self.active_directory["e2eds"][dev_eui][
+                            "edge_s_enc_key"
+                        ],
+                        edge_s_int_key=self.active_directory["e2eds"][dev_eui][
+                            "edge_s_int_key"
+                        ],
+                    )
+                )
+        stub.add_device(E2LDevicesInfoComplete(device_list=device_list))
 
     """
         @brief  This function handle new join request received by a ED.
@@ -835,11 +935,13 @@ class E2LoRaModule:
         )
         if gw_id not in self.e2gw_ids:
             return -1
-        self.statistics["gateways"][gw_id]["tx"] = self.statistics["gateways"][gw_id].get("tx", 0) + 1
+        self.statistics["gateways"][gw_id]["tx"] = (
+            self.statistics["gateways"][gw_id].get("tx", 0) + 1
+        )
         print("##################################")
         print(self.statistics)
         print("##################################")
-        
+
         # for i in range(len(self.e2gw_ids)):
         #     if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
         #         continue
@@ -881,12 +983,27 @@ class E2LoRaModule:
         else:
             self.dashboard_update_loop = Thread(target=self._update_dashboard)
             self.dashboard_update_loop.start()
-    
+
+    """
+        @brief  This function start a thread to monitor the DM resources.
+        @return: None.
+    """
 
     def start_resource_monitor_loop(self):
         if self.collection is not None:
             self.resource_monitor_loop = Thread(target=self._monitor_resource)
             self.resource_monitor_loop.start()
+        return
+
+    """
+        @brief  This function start a thread that waits for shutting down GW 2.
+        @return: None.
+    """
+
+    def start_shut_gw_thread(self):
+        if self.gw_shut_time > 0:
+            self.gw_shut_thread = Thread(target=self._shut_gw)
+            self.gw_shut_thread.start()
         return
 
     """
