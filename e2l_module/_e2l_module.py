@@ -479,10 +479,10 @@ class E2LoRaModule:
 
     def _monitor_resource(self):
         while(True):
-            mem_info  = psutil.virutal_memory()
+            mem_info  = psutil.virtual_memory()
             memory_usage = mem_info.used
             memory_available = mem_info.available
-            cpu_usage = psutil.cpu_percent
+            cpu_usage = psutil.cpu_percent()
             dm_sys_stats = {
                 "_id": self._get_now_isostring(),
                 "gw_id": "DM",
