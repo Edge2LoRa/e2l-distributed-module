@@ -1,6 +1,4 @@
 import os, sys
-import time
-import math
 import logging
 from dateutil.parser import isoparse
 from concurrent import futures
@@ -121,6 +119,7 @@ if __name__ == '__main__':
         dashboard_rpc_endpoint = f'{os.getenv("DASHBOARD_RPC_HOST")}:{os.getenv("DASHBOARD_RPC_PORT")}'
     e2l_module = E2LoRaModule(dashboard_rpc_endpoint=dashboard_rpc_endpoint, experiment_id = experiment_id)
     e2l_module.start_dashboard_update_loop()
+    e2l_module.start_resource_monitor_loop()
 
     #####################
     #   INIT RPC SERVER #

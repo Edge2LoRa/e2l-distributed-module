@@ -3,6 +3,7 @@ import base64
 import time
 from Crypto.PublicKey import ECC
 import logging
+import psutil
 import grpc
 from e2gw_rpc_client import (
     edge2gateway_pb2_grpc,
@@ -476,6 +477,26 @@ class E2LoRaModule:
             )
             time.sleep(self.default_sleep_seconds)
 
+    def _monitor_resource(self):
+        while(True):
+            mem_info  = psutil.virutal_memory()
+            memory_usage = mem_info.used
+            memory_available = mem_info.available
+            cpu_usage = psutil.cpu_percent
+            dm_sys_stats = {
+                "_id": self._get_now_isostring(),
+                "gw_id": "DM",
+                "memory_usage": memory_usage,
+                "memory_available": memory_available,
+                "cpu_usage": cpu_usage,
+                "data_received": 0,
+                "data_transmitted": 0,
+                "type": SYS_DOC_TYPE,
+            }
+            log.debug("Pushing sys stats in DB")
+            self.collection.insert_one(dm_sys_stats)
+            time.sleep(1)
+
     """
         @brief  This function is used to send a downlink frame to a ED.
         @param   base64_message: The frame payload to be sent encoded in base64.
@@ -860,6 +881,13 @@ class E2LoRaModule:
         else:
             self.dashboard_update_loop = Thread(target=self._update_dashboard)
             self.dashboard_update_loop.start()
+    
+
+    def start_resource_monitor_loop(self):
+        if self.collection is not None:
+            self.resource_monitor_loop = Thread(target=self._monitor_resource)
+            self.resource_monitor_loop.start()
+        return
 
     """
         @brief  This function handle the gateway log.
