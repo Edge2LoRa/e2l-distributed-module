@@ -38,20 +38,22 @@ class Edge2LoRaApplicationServer(
         return ResponseMessage(status_code=200, message=b"Success")
 
     def new_data(self, request, context):
-        now = math.floor(time.time() * 1000)
+        # now = math.floor(time.time() * 1000)
         gw_id = request.gw_id
         dev_eui = request.dev_eui
         dev_addr = request.dev_addr
         aggregated_data = request.aggregated_data
+        fcnts = list(request.fcnts)
         timetag = request.timetag
-        delta_time = now - timetag
+        # delta_time = now - timetag
 
         self.e2l_module.handle_edge_data(
             gw_id=gw_id,
             dev_eui=dev_eui,
             dev_addr=dev_addr,
             aggregated_data=aggregated_data,
-            delta_time=delta_time,
+            timetag=timetag,
+            fcnts=fcnts,
         )
 
         return ResponseMessage(status_code=0, message="OK")
@@ -61,9 +63,16 @@ class Edge2LoRaApplicationServer(
         dev_addr = request.dev_addr
         log = request.log
         frame_type = request.frame_type
+        fcnt = request.fcnt
+        timetag = request.timetag
 
         self.e2l_module.handle_gw_log(
-            gw_id=gw_id, dev_addr=dev_addr, log_message=log, frame_type=frame_type
+            gw_id=gw_id,
+            dev_addr=dev_addr,
+            log_message=log,
+            frame_type=frame_type,
+            fcnt=fcnt,
+            timetag=timetag,
         )
         return ResponseMessage(status_code=0, message="OK")
 

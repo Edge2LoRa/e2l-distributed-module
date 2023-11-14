@@ -58,10 +58,13 @@ MAX_ID = 4
 # FRAME TYPES
 EDGE_FRAME = 1
 LEGACY_FRAME = 2
+EDGE_FRAME_NOT_PROCESSING = 3
+EDGE_FRAME_AGGREGATE = 4
 
 # MONGO DB DOC TYPE
 STATS_DOC_TYPE = "stats"
 LOG_DOC_TYPE = "logs"
+LOG_V2_DOC_TYPE = "logs_v2"
 SYS_DOC_TYPE = "sys"
 
 
@@ -234,6 +237,25 @@ class E2LoRaModule:
             )
             log.info(f"Sending log to dashboard: {type}\t{message}")
             response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
+
+    def _push_log_to_db(
+        self, module_id, dev_addr, log_message, frame_type, fcnt, timetag
+    ):
+        if self.collection is None:
+            return
+        log_obj = {
+            "_id": self._get_now_isostring(),
+            "type": LOG_V2_DOC_TYPE,
+            "module_id": module_id,
+            "dev_addr": dev_addr,
+            "log": log_message,
+            "frame_type": frame_type,
+            "fnct": fcnt,
+            "timetag_gw": timetag,
+            "timetag_dm": datetime.utcnow().timestamp(),
+        }
+        self.collection.insert_one(log_obj)
+        return 0
 
     """
         @brief  This function collect the stats
@@ -910,7 +932,9 @@ class E2LoRaModule:
         @return: 0 is success, < 0 if failure.
     """
 
-    def handle_legacy_data(self, dev_id, dev_eui, dev_addr, frame_payload_base64):
+    def handle_legacy_data(
+        self, dev_id, dev_eui, dev_addr, fcnt, rx_timestamp, frame_payload_base64
+    ):
         # decode frame_payload_base64
         frame_payload = base64.b64decode(frame_payload_base64)
         log.info(
@@ -926,6 +950,14 @@ class E2LoRaModule:
         #         continue
         #     self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + 1
         #     self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
+        self._push_log_to_db(
+            module_id="dm",
+            dev_addr=dev_addr,
+            log_message=f"Legacy frame from {dev_addr}",
+            frame_type=LEGACY_FRAME,
+            fcnt=fcnt,
+            timetag=rx_timestamp,
+        )
         return 0
 
     """
@@ -939,10 +971,25 @@ class E2LoRaModule:
     """
 
     def handle_edge_data(
-        self, gw_id, dev_eui, dev_addr, aggregated_data, delta_time, gw_log_message=None
+        self,
+        gw_id,
+        dev_eui,
+        dev_addr,
+        aggregated_data,
+        fcnts,
+        timetag,
+        gw_log_message=None,
     ):
         log.info(
             f"Received Edge Frame from E2ED. Data: {aggregated_data}. Dev Addr: {dev_addr}. E2GW: {gw_id}."
+        )
+        self._push_log_to_db(
+            module_id="DM",
+            dev_addr=dev_addr,
+            log_message=f"Legacy frame from {dev_addr}",
+            frame_type=EDGE_FRAME_AGGREGATE,
+            fcnt=fcnts,
+            timetag=timetag,
         )
         self.statistics["dm"]["rx_e2l_frames"] = (
             self.statistics["dm"].get("rx_e2l_frames", 0) + 1
@@ -952,9 +999,6 @@ class E2LoRaModule:
         self.statistics["gateways"][gw_id]["tx"] = (
             self.statistics["gateways"][gw_id].get("tx", 0) + 1
         )
-        print("##################################")
-        print(self.statistics)
-        print("##################################")
 
         # for i in range(len(self.e2gw_ids)):
         #     if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
@@ -1027,7 +1071,7 @@ class E2LoRaModule:
         @return: 0 is success, < 0 if failure.
     """
 
-    def handle_gw_log(self, gw_id, dev_addr, log_message, frame_type):
+    def handle_gw_log(self, gw_id, dev_addr, log_message, frame_type, fcnt, timetag):
         if gw_id not in self.e2gw_ids:
             return -1
         # SEND LOG
@@ -1039,8 +1083,11 @@ class E2LoRaModule:
             log_type = LOG_GW2
         else:
             log_type = None
-        if log_type is not None:
+        if log_type is not None and self.collection is None:
             self._send_log(type=log_type, message=log_message)
+
+        if log_type is None:
+            return
 
         dev_eui = None
         for ed in self.ed_ids:
@@ -1056,6 +1103,23 @@ class E2LoRaModule:
                 self.statistics["devices"][dev_eui]["edge_frames"] = (
                     self.statistics["devices"][dev_eui].get("edge_frames", 0) + 1
                 )
+            self._push_log_to_db(
+                module_id=gw_id,
+                dev_addr=dev_addr,
+                log_message=log_message,
+                frame_type=frame_type,
+                fcnt=fcnt,
+                timetag=timetag,
+            )
+        elif frame_type == EDGE_FRAME_NOT_PROCESSING:
+            self._push_log_to_db(
+                module_id=gw_id,
+                dev_addr=dev_addr,
+                log_message=log_message,
+                frame_type=frame_type,
+                fcnt=fcnt,
+                timetag=timetag,
+            )
         elif frame_type == LEGACY_FRAME:
             self.statistics["gateways"][gw_id]["rx"] = (
                 self.statistics["gateways"][gw_id].get("rx", 0) + 1

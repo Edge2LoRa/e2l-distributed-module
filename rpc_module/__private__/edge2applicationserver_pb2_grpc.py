@@ -26,7 +26,7 @@ class Edge2ApplicationServerStub(object):
         )
         self.gw_log = channel.unary_unary(
             "/edge2applicationserver.Edge2ApplicationServer/gw_log",
-            request_serializer=edge2applicationserver__pb2.GWLog.SerializeToString,
+            request_serializer=edge2applicationserver__pb2.GwLog.SerializeToString,
             response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
         )
         self.sys_log = channel.unary_unary(
@@ -78,7 +78,7 @@ def add_Edge2ApplicationServerServicer_to_server(servicer, server):
         ),
         "gw_log": grpc.unary_unary_rpc_method_handler(
             servicer.gw_log,
-            request_deserializer=edge2applicationserver__pb2.GWLog.FromString,
+            request_deserializer=edge2applicationserver__pb2.GwLog.FromString,
             response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
         ),
         "sys_log": grpc.unary_unary_rpc_method_handler(
@@ -172,7 +172,7 @@ class Edge2ApplicationServer(object):
             request,
             target,
             "/edge2applicationserver.Edge2ApplicationServer/gw_log",
-            edge2applicationserver__pb2.GWLog.SerializeToString,
+            edge2applicationserver__pb2.GwLog.SerializeToString,
             edge2applicationserver__pb2.ResponseMessage.FromString,
             options,
             channel_credentials,

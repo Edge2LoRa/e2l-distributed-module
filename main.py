@@ -90,11 +90,14 @@ def subscribe_callback(client, userdata, message):
     up_port = up_msg.get("f_port")
     uplink_message = payload.get("uplink_message")
     frame_payload = uplink_message.get("frm_payload")
+    fcnt = uplink_message.get("f_cnt")
+    rx_metadata = payload.get("rx_metadata")[0]
+    rx_timestamp = rx_metadata.get("timestamp")
     ret = 0
     if up_port == DEFAULT_APP_PORT:
         log.debug("Received Legacy Frame")
         return client.e2l_module.handle_legacy_data(
-            dev_id, dev_eui, dev_addr, frame_payload
+            dev_id, dev_eui, dev_addr, fcnt, tx_timestamp, frame_payload
         )
     elif up_port == DEFAULT_E2L_JOIN_PORT:
         log.debug("Received Edge Join Frame")
