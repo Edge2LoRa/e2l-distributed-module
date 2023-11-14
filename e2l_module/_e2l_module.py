@@ -129,9 +129,11 @@ class E2LoRaModule:
         # Load Device JSON
         if self.collection is not None:
             self._load_device_json()
-        self.gw_shut_time = os.getenv("GW_SHUT_TIMER")
-        if self.gw_shut_time is None:
+        gw_shut_time = os.getenv("GW_SHUT_TIMER")
+        if gw_shut_time is None:
             self.gw_shut_time = 0
+        else:
+            self.gw_shut_time = int(gw_shut_time)
 
     def _load_device_json(self):
         filename = os.getenv("DEVICE_LIST_FILE")
@@ -177,15 +179,21 @@ class E2LoRaModule:
                 "edgeSEncKey": edgeSEncKey,
             }
             self.active_directory["e2eds"][dev_eui] = dev_obj
+        log.debug(self.active_directory["e2eds"])
+        log.debug(self.e2ed_ids)
 
     def _shut_gw(self):
+        log.info("STARTING GW SHUT THREAD!")
         time.sleep(self.gw_shut_time)
         if len(self.e2gw_ids) > 1:
+            log.info("SHUTTING GW!\n\n\n\n")
             gw_id = self.e2gw_ids.pop(1)
             gw_info = self.active_directory["e2gws"].pop(gw_id)
-            gw_stub = gw_info.get("stub")
+            log.info(gw_info)
+            gw_stub = gw_info.get("e2gw_stub")
             if gw_stub is not None:
-                gw_stub.set_active(ActiveFlag(active=False))
+                gw_stub.set_active(ActiveFlag(is_active=False))
+                log.info("GW SHUT DOWN\n\n\n\n")
 
         return
 
@@ -667,8 +675,8 @@ class E2LoRaModule:
         for dev_eui in self.e2ed_ids:
             if (
                 self.active_directory["e2eds"].get(dev_eui) is not None
-                and self.active_directory["e2eds"]["dev_eui"].get("e2gw") is None
-                and len(device_list) < total_devices / 2
+                and self.active_directory["e2eds"][dev_eui].get("e2gw") is None
+                # and len(device_list) < total_devices / 2
             ):
                 self.active_directory["e2eds"][dev_eui][
                     "e2gw"
@@ -678,14 +686,20 @@ class E2LoRaModule:
                         dev_eui=dev_eui,
                         dev_addr=self.active_directory["e2eds"][dev_eui]["dev_addr"],
                         edge_s_enc_key=self.active_directory["e2eds"][dev_eui][
-                            "edge_s_enc_key"
+                            "edgeSEncKey"
                         ],
                         edge_s_int_key=self.active_directory["e2eds"][dev_eui][
-                            "edge_s_int_key"
+                            "edgeSIntKey"
                         ],
                     )
                 )
-        stub.add_device(E2LDevicesInfoComplete(device_list=device_list))
+        log.debug("DEVICE LIST TO SEND")
+        log.debug(device_list)
+        stub.add_devices(E2LDevicesInfoComplete(device_list=device_list))
+
+        # Start shut gw thread to simulate crash
+        self.start_shut_gw_thread()
+        return 0
 
     """
         @brief  This function handle new join request received by a ED.
