@@ -182,8 +182,6 @@ class E2LoRaModule:
                 "edgeSEncKey": edgeSEncKey,
             }
             self.active_directory["e2eds"][dev_eui] = dev_obj
-        log.debug(self.active_directory["e2eds"])
-        log.debug(self.e2ed_ids)
 
     def _shut_gw(self):
         log.info("STARTING GW SHUT THREAD!")
@@ -197,6 +195,7 @@ class E2LoRaModule:
             if gw_stub is not None:
                 gw_stub.set_active(ActiveFlag(is_active=False))
                 log.info("GW SHUT DOWN\n\n\n\n")
+            # TODO: Add dev to other GW
 
         return
 
@@ -243,6 +242,7 @@ class E2LoRaModule:
     ):
         if self.collection is None:
             return
+        timetag_dm = int(round(time.time() * 1000))
         log_obj = {
             "_id": self._get_now_isostring(),
             "type": LOG_V2_DOC_TYPE,
@@ -250,9 +250,9 @@ class E2LoRaModule:
             "dev_addr": dev_addr,
             "log": log_message,
             "frame_type": frame_type,
-            "fnct": fcnt,
+            "fcnt": fcnt,
             "timetag_gw": timetag,
-            "timetag_dm": datetime.utcnow().timestamp(),
+            "timetag_dm": timetag_dm,
         }
         self.collection.insert_one(log_obj)
         return 0
@@ -694,11 +694,12 @@ class E2LoRaModule:
         # Check the preloaded devices
         total_devices = len(self.e2ed_ids)
         device_list = []
-        for dev_eui in self.e2ed_ids:
+        for dev_index in range(len(self.e2ed_ids)):
+            dev_eui = self.e2ed_ids[dev_index]
             if (
                 self.active_directory["e2eds"].get(dev_eui) is not None
                 and self.active_directory["e2eds"][dev_eui].get("e2gw") is None
-                # and len(device_list) < total_devices / 2
+                and dev_index % 2 == index
             ):
                 self.active_directory["e2eds"][dev_eui][
                     "e2gw"
@@ -715,8 +716,6 @@ class E2LoRaModule:
                         ],
                     )
                 )
-        log.debug("DEVICE LIST TO SEND")
-        log.debug(device_list)
         stub.add_devices(E2LDevicesInfoComplete(device_list=device_list))
 
         # Start shut gw thread to simulate crash
