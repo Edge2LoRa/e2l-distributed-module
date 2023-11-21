@@ -63,9 +63,9 @@ class Device(_message.Message):
     EDGE_S_INT_KEY_FIELD_NUMBER: _ClassVar[int]
     dev_eui: str
     dev_addr: str
-    edge_s_enc_key: str
-    edge_s_int_key: str
-    def __init__(self, dev_eui: _Optional[str] = ..., dev_addr: _Optional[str] = ..., edge_s_enc_key: _Optional[str] = ..., edge_s_int_key: _Optional[str] = ...) -> None: ...
+    edge_s_enc_key: bytes
+    edge_s_int_key: bytes
+    def __init__(self, dev_eui: _Optional[str] = ..., dev_addr: _Optional[str] = ..., edge_s_enc_key: _Optional[bytes] = ..., edge_s_int_key: _Optional[bytes] = ...) -> None: ...
 
 class E2LDevicesInfoComplete(_message.Message):
     __slots__ = ["device_list"]

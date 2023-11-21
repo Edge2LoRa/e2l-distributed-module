@@ -103,10 +103,13 @@ class E2LoRaModule:
         self.dashboard_rpc_stub = None
         if experiment_id is not None:
             self.experiment_id = experiment_id
-            self.db_client = MongoClient(
-                os.getenv("MONGODB_HOST"), os.getenv("MONGODB_PORT")
-            )
-            self.db = self.db_client["experiments_db"]
+            mongo_host = os.getenv("MONGO_HOST", "localhost")
+            mongo_port = os.getenv("MONGO_PORT", 27017)
+            if isinstance(mongo_port, str) and mongo_port.isnumeric():
+                mongo_port = int(mongo_port)
+            self.db_client = MongoClient(mongo_host, mongo_port)
+            db_name = os.getenv("MONGO_DB_NAME", "experiments_db")
+            self.db = self.db_client[db_name]
             if experiment_id not in self.db.list_collection_names():
                 self.db.create_collection(experiment_id)
                 self.collection = self.db[experiment_id]
@@ -149,13 +152,13 @@ class E2LoRaModule:
             dev_id = device.get("ids", {}).get("dev_id")
             dev_eui = device.get("ids", {}).get("dev_eui")
             dev_addr = device.get("session", {}).get("dev_addr")
-            edgeSIntKey = (
+            edgeSEncKey = (
                 device.get("session", {})
                 .get("keys", {})
                 .get("app_s_key", {})
                 .get("key")
             )
-            edgeSEncKey = (
+            edgeSIntKey = (
                 device.get("session", {})
                 .get("keys", {})
                 .get("f_nwk_s_int_key", {})
@@ -181,6 +184,7 @@ class E2LoRaModule:
                 "edgeSIntKey": edgeSIntKey,
                 "edgeSEncKey": edgeSEncKey,
             }
+            print(dev_obj)
             self.active_directory["e2eds"][dev_eui] = dev_obj
 
     def _shut_gw(self):
@@ -699,21 +703,24 @@ class E2LoRaModule:
             if (
                 self.active_directory["e2eds"].get(dev_eui) is not None
                 and self.active_directory["e2eds"][dev_eui].get("e2gw") is None
-                and ((index == 0 and dev_index % 4 < 2) or (index == 1 and dev_index % 4 <=2))
+                and (
+                    (index == 0 and dev_index % 4 < 2)
+                    or (index == 1 and dev_index % 4 <= 2)
+                )
             ):
                 self.active_directory["e2eds"][dev_eui][
                     "e2gw"
                 ] = gw_rpc_endpoint_address
+                edge_s_enc_key = self.active_directory["e2eds"][dev_eui]["edgeSEncKey"]
+                edge_s_int_key = self.active_directory["e2eds"][dev_eui]["edgeSIntKey"]
+                edge_s_enc_key_bytes = bytes.fromhex(edge_s_enc_key)
+                edge_s_int_key_bytes = bytes.fromhex(edge_s_int_key)
                 device_list.append(
                     Device(
                         dev_eui=dev_eui,
                         dev_addr=self.active_directory["e2eds"][dev_eui]["dev_addr"],
-                        edge_s_enc_key=self.active_directory["e2eds"][dev_eui][
-                            "edgeSEncKey"
-                        ],
-                        edge_s_int_key=self.active_directory["e2eds"][dev_eui][
-                            "edgeSIntKey"
-                        ],
+                        edge_s_enc_key=edge_s_enc_key_bytes,
+                        edge_s_int_key=edge_s_int_key_bytes,
                     )
                 )
         stub.add_devices(E2LDevicesInfoComplete(device_list=device_list))
@@ -949,13 +956,16 @@ class E2LoRaModule:
         #         continue
         #     self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + 1
         #     self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
+        timestamp = rx_timestamp
+        if frame_payload.isnumeric():
+            timestamp = int(frame_payload)
         self._push_log_to_db(
             module_id="dm",
             dev_addr=dev_addr,
             log_message=f"Legacy frame from {dev_addr}",
             frame_type=LEGACY_FRAME,
             fcnt=fcnt,
-            timetag=rx_timestamp,
+            timetag=timestamp,
         )
         return 0
 
@@ -1111,6 +1121,9 @@ class E2LoRaModule:
                 timetag=timetag,
             )
         elif frame_type == EDGE_FRAME_NOT_PROCESSING:
+            self.statistics["gateways"][gw_id]["rx"] = (
+                self.statistics["gateways"][gw_id].get("rx", 0) + 1
+            )
             self._push_log_to_db(
                 module_id=gw_id,
                 dev_addr=dev_addr,
@@ -1130,6 +1143,14 @@ class E2LoRaModule:
                 self.statistics["devices"][dev_eui]["legacy_frames"] = (
                     self.statistics["devices"][dev_eui].get("legacy_frames", 0) + 1
                 )
+            self._push_log_to_db(
+                module_id=gw_id,
+                dev_addr=dev_addr,
+                log_message=log_message,
+                frame_type=frame_type,
+                fcnt=fcnt,
+                timetag=timetag,
+            )
         else:
             log.warning("Unknown frame type")
 
