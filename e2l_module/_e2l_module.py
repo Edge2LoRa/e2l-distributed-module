@@ -1178,7 +1178,7 @@ class E2LoRaModule:
         }
         log.debug("Pushing sys stats in DB")
         self.collection.insert_one(gw_sys_stats)
-        default_window_size = os.getenv("DEFAULT_WINDOW_SIZE")
+        default_window_size = os.getenv("DEFAULT_AGGR_WINDOWS_SIZE")
         if default_window_size is None or not default_window_size.isnumeric():
             default_window_size = 10
         else:
