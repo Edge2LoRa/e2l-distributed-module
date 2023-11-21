@@ -184,7 +184,6 @@ class E2LoRaModule:
                 "edgeSIntKey": edgeSIntKey,
                 "edgeSEncKey": edgeSEncKey,
             }
-            print(dev_obj)
             self.active_directory["e2eds"][dev_eui] = dev_obj
 
     def _shut_gw(self):
@@ -942,7 +941,7 @@ class E2LoRaModule:
         self, dev_id, dev_eui, dev_addr, fcnt, rx_timestamp, frame_payload_base64
     ):
         # decode frame_payload_base64
-        frame_payload = base64.b64decode(frame_payload_base64)
+        frame_payload = base64.b64decode(frame_payload_base64).decode("utf-8")
         log.info(
             f"Received Legacy Frame from Legacy Route. Data: {frame_payload}. Dev: {dev_addr}."
         )
@@ -960,7 +959,7 @@ class E2LoRaModule:
         if frame_payload.isnumeric():
             timestamp = int(frame_payload)
         self._push_log_to_db(
-            module_id="dm",
+            module_id="DM",
             dev_addr=dev_addr,
             log_message=f"Legacy frame from {dev_addr}",
             frame_type=LEGACY_FRAME,
@@ -995,7 +994,7 @@ class E2LoRaModule:
         self._push_log_to_db(
             module_id="DM",
             dev_addr=dev_addr,
-            log_message=f"Legacy frame from {dev_addr}",
+            log_message=f"Received Aggregate Frame from {dev_addr}",
             frame_type=EDGE_FRAME_AGGREGATE,
             fcnt=fcnts,
             timetag=timetag,
@@ -1179,12 +1178,17 @@ class E2LoRaModule:
         }
         log.debug("Pushing sys stats in DB")
         self.collection.insert_one(gw_sys_stats)
+        default_window_size = os.getenv("DEFAULT_WINDOW_SIZE")
+        if default_window_size is None or not default_window_size.isnumeric():
+            default_window_size = 10
+        else:
+            default_window_size = int(default_window_size)
         self._update_params(
             None,
             None,
             None,
             AVG_ID,
-            10,
+            default_window_size,
         )
         return 0
 
