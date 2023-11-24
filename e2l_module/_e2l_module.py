@@ -135,11 +135,27 @@ class E2LoRaModule:
         # Load Device JSON
         if self.collection is not None:
             self._load_device_json()
-        gw_shut_time = os.getenv("GW_SHUT_TIMER")
-        if gw_shut_time is None:
-            self.gw_shut_time = 0
-        else:
-            self.gw_shut_time = int(gw_shut_time)
+        gw_shut_enabled = os.getenv("GW_SHUT", "0")
+        self.gw_shut_enabled = True if gw_shut_enabled == "1" else False
+        if self.gw_shut_enabled:
+            device_number = os.getenv("DEVICE_NUMBER", "0")
+            packet_number = os.getenv("PACKET_NUMBER", "0")
+            if self.packet_number.isnumeric() and self.device_number.isnumeric():
+                packet_number = int(self.packet_number)
+                device_number = int(self.device_number)
+                if self.packet_number <= 0 or self.device_number <= 0:
+                    self.gw_shut_enabled = False
+                else:
+                    self.gw_shut_packet_limit = int((packet_number * device_number) / 2)
+            else:
+                self.gw_shut_enabled = False
+
+    """
+        @brief this function load the device info from a JSON file.
+        @param None
+        @return None
+        @note the file shall be in the same format as the The Things Stack device bulk import JSON file
+    """
 
     def _load_device_json(self):
         filename = os.getenv("DEVICE_LIST_FILE")
@@ -186,26 +202,10 @@ class E2LoRaModule:
             }
             self.active_directory["e2eds"][dev_eui] = dev_obj
 
-    def _shut_gw(self):
-        log.info("STARTING GW SHUT THREAD!")
-        time.sleep(self.gw_shut_time)
-        if len(self.e2gw_ids) > 1:
-            log.info("SHUTTING GW!\n\n\n\n")
-            gw_id = self.e2gw_ids.pop(1)
-            gw_info = self.active_directory["e2gws"].pop(gw_id)
-            log.info(gw_info)
-            gw_stub = gw_info.get("e2gw_stub")
-            if gw_stub is not None:
-                gw_stub.set_active(ActiveFlag(is_active=False))
-                log.info("GW SHUT DOWN\n\n\n\n")
-            # TODO: Add dev to other GW
-
-        return
-
     """
-        @brief: this function return the current date and time in ISOString.
-        @return: ISOString (str)
-        @note: "YYYY-mm-ddTHH:MM:SS.ffffffZ"
+        @brief this function return the current date and time in ISOString.
+        @return ISOString (str)
+        @note "YYYY-mm-ddTHH:MM:SS.ffffffZ"
     """
 
     def _get_now_isostring(self):
@@ -213,7 +213,7 @@ class E2LoRaModule:
         return f'{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")}Z'
 
     """
-        @brief: this function send log to the dashboard
+        @brief this function send log to the dashboard
         @param type: log type <LOG_GW1|LOG_GW2|LOG_ED>
         @param message: log message
     """
@@ -240,11 +240,22 @@ class E2LoRaModule:
             log.info(f"Sending log to dashboard: {type}\t{message}")
             response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
 
+    """
+        @brief this function push a log document in the MongoDB collection
+        @param module_id: module id
+        @param dev_addr: device address
+        @param log_message: log message
+        @param frame_type: frame type
+        @param fcnt: frame counter
+        @param timetag: timetag
+        @return 0 if success, -1 if error
+    """
+
     def _push_log_to_db(
         self, module_id, dev_addr, log_message, frame_type, fcnt, timetag
     ):
         if self.collection is None:
-            return
+            return -1
         timetag_dm = int(round(time.time() * 1000))
         log_obj = {
             "_id": self._get_now_isostring(),
@@ -366,7 +377,7 @@ class E2LoRaModule:
             # time.sleep(5)
 
     """
-        @brief: This function updated the paramenters according to the settings of the dashboard.
+        @brief This function updated the paramenters according to the settings of the dashboard.
                 It can trigger a change in the aggregation function and window size of the gateways, or
                 change the E2GW for the E2EDs.
         @param ed_1_gw_selection: the gateway index to be used for the first E2ED
@@ -374,7 +385,7 @@ class E2LoRaModule:
         @param ed_3_gw_selection: the gateway index to be used for the third E2ED
         @param aggregation_function: the aggregation function to be used for the gateways
         @param window_size: the window size to be used for the gateways
-        @return: None
+        @return None
     """
 
     def _update_params(
@@ -529,6 +540,11 @@ class E2LoRaModule:
                                         gw_log_message=log_message,
                                     )
 
+    """
+        @brief  This function is used to periodically push the stats to the DB.
+        @return None
+    """
+
     def _update_db(self):
         while True:
             time.sleep(self.default_sleep_seconds)
@@ -638,8 +654,8 @@ class E2LoRaModule:
         @param gw_rpc_endpoint_address: The IP address of the Gateway.
         @param gw_rpc_endpoint_port: The port of the Gateway.
         @param gw_pub_key_bytes: The E2GW Public Key.
-        @return: 0 is success, < 0 if failure.
-        @error code:
+        @return 0 is success, < 0 if failure.
+        @error code
             -1: Error 
     """
 
@@ -724,8 +740,6 @@ class E2LoRaModule:
                 )
         stub.add_devices(E2LDevicesInfoComplete(device_list=device_list))
 
-        # Start shut gw thread to simulate crash
-        self.start_shut_gw_thread()
         return 0
 
     """
@@ -760,7 +774,7 @@ class E2LoRaModule:
         @param dev_eui: The Dev EUI.
         @param dev_addr: The Dev Addr.
         @param dev_pub_key_compressed: The Compressed Dev Public Key.
-        @return: 0 is success, < 0 if failure.
+        @return 0 is success, < 0 if failure.
         @error code:
             -1: Error 
     """
@@ -922,7 +936,7 @@ class E2LoRaModule:
         @param dev_eui: The Dev EUI.
         @param dev_addr: The Dev Addr.
         @param frame_payload: The Frame Payload.
-        @return: 0 is success, < 0 if failure.
+        @return 0 is success, < 0 if failure.
     """
 
     def handle_edge_data_from_legacy(self, dev_id, dev_eui, dev_addr, frame_payload):
@@ -934,7 +948,7 @@ class E2LoRaModule:
         @param dev_eui: The Dev EUI.
         @param dev_addr: The Dev Addr.
         @param frame_payload: The Frame Payload.
-        @return: 0 is success, < 0 if failure.
+        @return 0 is success, < 0 if failure.
     """
 
     def handle_legacy_data(
@@ -975,7 +989,7 @@ class E2LoRaModule:
         @param dev_addr: The Dev Addr.
         @param aggregated_data: The Aggregated Data.
         @param delta_time: The Delta Time.
-        @return: 0 is success, < 0 if failure.
+        @return 0 is success, < 0 if failure.
     """
 
     def handle_edge_data(
@@ -1038,7 +1052,7 @@ class E2LoRaModule:
 
     """
         @brief  Thid function start a thread to handle the dashboard update loop.
-        @return: None.
+        @return None.
     """
 
     def start_dashboard_update_loop(self):
@@ -1052,7 +1066,7 @@ class E2LoRaModule:
 
     """
         @brief  This function start a thread to monitor the DM resources.
-        @return: None.
+        @return None.
     """
 
     def start_resource_monitor_loop(self):
@@ -1062,21 +1076,10 @@ class E2LoRaModule:
         return
 
     """
-        @brief  This function start a thread that waits for shutting down GW 2.
-        @return: None.
-    """
-
-    def start_shut_gw_thread(self):
-        if self.gw_shut_time > 0:
-            self.gw_shut_thread = Thread(target=self._shut_gw)
-            self.gw_shut_thread.start()
-        return
-
-    """
         @brief  This function handle the gateway log.
         @param gw_id: The gateway id.
         @param log_message: The log message.
-        @return: 0 is success, < 0 if failure.
+        @return 0 is success, -1 if failure.
     """
 
     def handle_gw_log(self, gw_id, dev_addr, log_message, frame_type, fcnt, timetag):
@@ -1155,6 +1158,17 @@ class E2LoRaModule:
 
         return 0
 
+    """
+        @brief  This function handle the system log from the GWs.
+        @param gw_id: The gateway id.
+        @param memory_usage: The memory usage.
+        @param memory_available: The memory available.
+        @param cpu_usage: The cpu usage.
+        @param data_received: The data received.
+        @param data_transmitted: The data transmitted.
+        @return 0 is success, -1 if failure.
+    """
+
     def handle_sys_log(
         self,
         gw_id,
@@ -1195,7 +1209,7 @@ class E2LoRaModule:
     """
         @brief  This function set the mqtt client object.
         @param mqtt_client: The mqtt client object.
-        @return: None.
+        @return None.
     """
 
     def set_mqtt_client(self, mqtt_client):
