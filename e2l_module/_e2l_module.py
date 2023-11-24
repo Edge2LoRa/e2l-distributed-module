@@ -151,6 +151,16 @@ class E2LoRaModule:
                 self.gw_shut_enabled = False
 
     """
+        @brief this function return the current date and time in ISOString.
+        @return ISOString (str)
+        @note "YYYY-mm-ddTHH:MM:SS.ffffffZ"
+    """
+
+    def _get_now_isostring(self):
+        # get current daste time in ISOString format
+        return f'{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")}Z'
+
+    """
         @brief this function load the device info from a JSON file.
         @param None
         @return None
@@ -201,16 +211,6 @@ class E2LoRaModule:
                 "edgeSEncKey": edgeSEncKey,
             }
             self.active_directory["e2eds"][dev_eui] = dev_obj
-
-    """
-        @brief this function return the current date and time in ISOString.
-        @return ISOString (str)
-        @note "YYYY-mm-ddTHH:MM:SS.ffffffZ"
-    """
-
-    def _get_now_isostring(self):
-        # get current daste time in ISOString format
-        return f'{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")}Z'
 
     """
         @brief this function send log to the dashboard
@@ -617,6 +617,53 @@ class E2LoRaModule:
             log.debug("Pushing sys stats in DB")
             self.collection.insert_one(dm_sys_stats)
             time.sleep(1)
+
+    """
+        @brief this function shut the GW2 and performa the handover of the e2ed to GW1
+        @return 0 if success, -1 if failed.
+    """
+
+    def _shut_gw(self):
+        if len(self.e2ed_ids) < 2:
+            return -1
+        # GET STUB OF GW TO SHUT
+        shut_gw_id = self.e2gw_ids[1]
+        shut_gw_info = self.active_directory["e2gws"].get(shut_gw_id, {})
+        shut_gw_stub = shut_gw_info.get("e2gw_stub")
+        if shut_gw_stub is None:
+            return -1
+        # GET STUB OF GW TO PERFORM HANDOVER
+        handover_gw_id = self.e2gw_ids[0]
+        handover_gw_info = self.active_directory["e2gws"].get(handover_gw_id, {})
+        handover_gw_stub = handover_gw_info.get("e2gw_stub")
+        if handover_gw_stub is None:
+            return -1
+
+        # SHUT GW
+        shut_gw_stub.set_active(ActiveFlag(False))
+        device_list = []
+        for dev_index in range(len(self.e2ed_ids)):
+            dev_eui = self.e2ed_ids[dev_index]
+            if (
+                self.active_directory["e2eds"].get(dev_eui, {}).get("e2gw", "")
+                == shut_gw_id
+            ):
+                self.active_directory["e2eds"][dev_eui]["e2gw"] = handover_gw_id
+                edge_s_enc_key = self.active_directory["e2eds"][dev_eui]["edgeSEncKey"]
+                edge_s_int_key = self.active_directory["e2eds"][dev_eui]["edgeSIntKey"]
+                edge_s_enc_key_bytes = bytes.fromhex(edge_s_enc_key)
+                edge_s_int_key_bytes = bytes.fromhex(edge_s_int_key)
+                device_list.append(
+                    Device(
+                        dev_eui=dev_eui,
+                        dev_addr=self.active_directory["e2eds"][dev_eui]["dev_addr"],
+                        edge_s_enc_key=edge_s_enc_key_bytes,
+                        edge_s_int_key=edge_s_int_key_bytes,
+                    )
+                )
+        handover_gw_stub.add_devices(E2LDevicesInfoComplete(device_list=device_list))
+
+        return 0
 
     """
         @brief  This function is used to send a downlink frame to a ED.
@@ -1155,6 +1202,14 @@ class E2LoRaModule:
             )
         else:
             log.warning("Unknown frame type")
+
+        if (
+            index == 1
+            and self.gw_shut_enabled
+            and self.statistics["gateways"][gw_id]["rx"] >= self.gw_shut_packet_limit
+        ):
+            shut_thread = Thread(target=self._shut_gw)
+            shut_thread.start()
 
         return 0
 
