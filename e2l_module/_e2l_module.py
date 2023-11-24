@@ -140,10 +140,10 @@ class E2LoRaModule:
         if self.gw_shut_enabled:
             device_number = os.getenv("DEVICE_NUMBER", "0")
             packet_number = os.getenv("PACKET_NUMBER", "0")
-            if self.packet_number.isnumeric() and self.device_number.isnumeric():
-                packet_number = int(self.packet_number)
-                device_number = int(self.device_number)
-                if self.packet_number <= 0 or self.device_number <= 0:
+            if packet_number.isnumeric() and device_number.isnumeric():
+                packet_number = int(packet_number)
+                device_number = int(device_number)
+                if packet_number <= 0 or device_number <= 0:
                     self.gw_shut_enabled = False
                 else:
                     self.gw_shut_packet_limit = int((packet_number * device_number) / 2)
