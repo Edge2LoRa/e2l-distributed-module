@@ -769,7 +769,7 @@ class E2LoRaModule:
                 and self.active_directory["e2eds"][dev_eui].get("e2gw") is None
                 and (
                     (index == 0 and dev_index % 4 < 2)
-                    or (index == 1 and dev_index % 4 <= 2)
+                    or (index == 1 and dev_index % 4 >= 2)
                 )
             ):
                 self.active_directory["e2eds"][dev_eui][
@@ -787,6 +787,7 @@ class E2LoRaModule:
                         edge_s_int_key=edge_s_int_key_bytes,
                     )
                 )
+        log.debug(f"Sending {len(device_list)} to {gw_rpc_endpoint_address}")
         stub.add_devices(E2LDevicesInfoComplete(device_list=device_list))
 
         return 0
