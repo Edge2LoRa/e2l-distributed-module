@@ -138,6 +138,7 @@ class E2LoRaModule:
         gw_shut_enabled = os.getenv("GW_SHUT", "0")
         self.gw_shut_enabled = True if gw_shut_enabled == "1" else False
         if self.gw_shut_enabled:
+            self.gw_shut_done = False
             device_number = os.getenv("DEVICE_NUMBER", "0")
             packet_number = os.getenv("PACKET_NUMBER", "0")
             if packet_number.isnumeric() and device_number.isnumeric():
@@ -632,6 +633,7 @@ class E2LoRaModule:
         shut_gw_stub = shut_gw_info.get("e2gw_stub")
         if shut_gw_stub is None:
             return -1
+        self.gw_shut_done = True
         # GET STUB OF GW TO PERFORM HANDOVER
         handover_gw_id = self.e2gw_ids[0]
         handover_gw_info = self.active_directory["e2gws"].get(handover_gw_id, {})
@@ -640,7 +642,7 @@ class E2LoRaModule:
             return -1
 
         # SHUT GW
-        shut_gw_stub.set_active(ActiveFlag(False))
+        shut_gw_stub.set_active(ActiveFlag(is_active=False))
         device_list = []
         for dev_index in range(len(self.e2ed_ids)):
             dev_eui = self.e2ed_ids[dev_index]
@@ -1206,6 +1208,7 @@ class E2LoRaModule:
         if (
             index == 1
             and self.gw_shut_enabled
+            and not self.gw_shut_done
             and self.statistics["gateways"][gw_id]["rx"] >= self.gw_shut_packet_limit
         ):
             shut_thread = Thread(target=self._shut_gw)
