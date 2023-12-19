@@ -1017,8 +1017,6 @@ class E2LoRaModule:
         log.info(
             f"Received Legacy Frame from Legacy Route. Data: {frame_payload}. Dev: {dev_addr}."
         )
-        self.statistics["ns"]["rx"] = self.statistics["ns"].get("rx", 0) + 2
-        self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
         self.statistics["dm"]["rx_legacy_frames"] = (
             self.statistics["dm"].get("rx_legacy_frames", 0) + 1
         )
@@ -1211,6 +1209,9 @@ class E2LoRaModule:
                 fcnt=fcnt,
                 timetag=timetag,
             )
+            # STATS FOR NS
+            self.statistics["ns"]["rx"] = self.statistics["ns"].get("rx", 0) + 1
+            self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
         else:
             log.warning("Unknown frame type")
 
