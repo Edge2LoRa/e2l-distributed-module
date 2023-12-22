@@ -94,6 +94,7 @@ class E2LoRaModule:
         self.e2ed_ids = []
         self.ed_ids = []
         self.legacy_not_duplicates = {}
+        self.legacy_dropped = 0
         self.legacy_not_duplicates_lock = Lock()
         # Setup experiment
         self.last_stats = None
@@ -304,6 +305,7 @@ class E2LoRaModule:
             "gw_2_transmitted_frame_num": gw_2_info.get("tx", 0),
             "ns_received_frame_num": ns_info.get("rx", 0),
             "ns_transmitted_frame_num": ns_info.get("tx", 0),
+            "ns_dropped_legacy_frames": self.legacy_dropped,
             "dm_received_frame_num": dm_info.get("rx_legacy_frames", 0)
             + dm_info.get("rx_e2l_frames", 0),
             "dm_received_legacy_frame_num": dm_info.get("rx_legacy_frames", 0),
@@ -335,6 +337,10 @@ class E2LoRaModule:
                     "ns_transmitted_frame_num", 0
                 )
                 - self.last_stats.get("ns_transmitted_frame_num", 0),
+                "ns_dropped_legacy_frames": new_stats_data.get(
+                    "ns_dropped_legacy_frames", 0
+                )
+                - self.last_stats.get("ns_dropped_legacy_frames", 0),
                 "dm_received_frame_num": new_stats_data.get("dm_received_frame_num", 0)
                 - self.last_stats.get("dm_received_frame_num", 0),
                 "dm_received_legacy_frame_num": new_stats_data.get(
@@ -1219,6 +1225,8 @@ class E2LoRaModule:
                         self.statistics["dm"].get("rx_legacy_frames", 0) + 1
                     )
                     self.legacy_not_duplicates[dev_addr] = last_fcnt
+                else:
+                    self.legacy_dropped = self.legacy_dropped + 1
         else:
             log.warning("Unknown frame type")
 
