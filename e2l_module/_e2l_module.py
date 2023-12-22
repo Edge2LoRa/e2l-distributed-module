@@ -22,7 +22,7 @@ from .__private__ import (
 )
 import json
 import hashlib
-from threading import Thread
+from threading import Thread, Lock
 from pymongo import MongoClient
 from datetime import datetime
 
@@ -93,6 +93,8 @@ class E2LoRaModule:
         self.e2gw_ids = []
         self.e2ed_ids = []
         self.ed_ids = []
+        self.legacy_not_duplicates = {}
+        self.legacy_not_duplicates_lock = Lock()
         # Setup experiment
         self.last_stats = None
         self.default_sleep_seconds = 5
@@ -1017,14 +1019,11 @@ class E2LoRaModule:
         log.info(
             f"Received Legacy Frame from Legacy Route. Data: {frame_payload}. Dev: {dev_addr}."
         )
-        self.statistics["dm"]["rx_legacy_frames"] = (
-            self.statistics["dm"].get("rx_legacy_frames", 0) + 1
-        )
-        # for i in range(len(self.e2gw_ids)):
-        #     if self.statistics["gateways"].get(self.e2gw_ids[i]) is None:
-        #         continue
-        #     self.statistics["gateways"][self.e2gw_ids[i]]["rx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("rx", 0) + 1
-        #     self.statistics["gateways"][self.e2gw_ids[i]]["tx"] = self.statistics["gateways"][self.e2gw_ids[i]].get("tx", 0) + 1
+        # COMMENT OUT FOR BETTER STATS. TTS MQTT BROKER QoS 0
+        # self.statistics["dm"]["rx_legacy_frames"] = (
+        #     self.statistics["dm"].get("rx_legacy_frames", 0) + 1
+        # )
+
         timestamp = rx_timestamp
         if frame_payload.isnumeric():
             timestamp = int(frame_payload)
@@ -1212,6 +1211,14 @@ class E2LoRaModule:
             # STATS FOR NS
             self.statistics["ns"]["rx"] = self.statistics["ns"].get("rx", 0) + 1
             self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
+            # Check duplicate and update legacy stats
+            with self.legacy_not_duplicates_lock:
+                last_fcnt = self.legacy_not_duplicates.get(dev_addr, -1)
+                if fcnt > last_fcnt:
+                    self.statistics["dm"]["rx_legacy_frames"] = (
+                        self.statistics["dm"].get("rx_legacy_frames", 0) + 1
+                    )
+                    self.legacy_not_duplicates[dev_addr] = last_fcnt
         else:
             log.warning("Unknown frame type")
 
