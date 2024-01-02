@@ -1216,7 +1216,6 @@ class E2LoRaModule:
             )
             # STATS FOR NS
             self.statistics["ns"]["rx"] = self.statistics["ns"].get("rx", 0) + 1
-            self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
             # Check duplicate and update legacy stats
             with self.legacy_not_duplicates_lock:
                 last_fcnt = self.legacy_not_duplicates.get(dev_addr, -1)
@@ -1225,6 +1224,7 @@ class E2LoRaModule:
                         self.statistics["dm"].get("rx_legacy_frames", 0) + 1
                     )
                     self.legacy_not_duplicates[dev_addr] = last_fcnt
+                    self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
                 else:
                     self.legacy_dropped = self.legacy_dropped + 1
         else:
