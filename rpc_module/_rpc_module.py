@@ -92,3 +92,23 @@ class Edge2LoRaApplicationServer(
             data_transmitted=data_transmitted,
         )
         return ResponseMessage(status_code=0, message="OK")
+
+    def gw_frames_stats(self, request, context):
+        gw_id = request.gw_id
+        legacy_frames = request.legacy_frames
+        legacy_fcnts = list(request.legacy_fcnts)
+        edge_frames = request.edge_frames
+        edge_fcnts = list(request.edge_fcnts)
+        edge_not_processed_frames = request.edge_not_processed_frames
+        edge_not_processed_fcnts = list(request.edge_not_processed_fcnts)
+
+        self.e2l_module.handle_gw_frames_stats(
+            gw_id=gw_id,
+            legacy_frames=legacy_frames,
+            legacy_fcnts=legacy_fcnts,
+            edge_frames=edge_frames,
+            edge_fcnts=edge_fcnts,
+            edge_not_processed_frames=edge_not_processed_frames,
+            edge_not_processed_fcnts=edge_not_processed_fcnts,
+        )
+        return ResponseMessage(status_code=0, message="OK")

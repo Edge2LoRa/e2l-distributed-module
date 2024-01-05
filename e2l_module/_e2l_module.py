@@ -66,6 +66,7 @@ STATS_DOC_TYPE = "stats"
 LOG_DOC_TYPE = "logs"
 LOG_V2_DOC_TYPE = "logs_v2"
 SYS_DOC_TYPE = "sys"
+GW_FRAMES_STATS_DOC_TYPE = "gw_stats"
 
 
 class E2LoRaModule:
@@ -1026,9 +1027,11 @@ class E2LoRaModule:
             f"Received Legacy Frame from Legacy Route. Data: {frame_payload}. Dev: {dev_addr}."
         )
         # COMMENT OUT FOR BETTER STATS. TTS MQTT BROKER QoS 0
-        # self.statistics["dm"]["rx_legacy_frames"] = (
-        #     self.statistics["dm"].get("rx_legacy_frames", 0) + 1
-        # )
+        self.statistics["dm"]["rx_legacy_frames"] = (
+            self.statistics["dm"].get("rx_legacy_frames", 0) + 1
+        )
+        # self.statistics["ns"]["rx"] = self.statistics["ns"].get("rx", 0) + 1
+        self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
 
         timestamp = rx_timestamp
         if frame_payload.isnumeric():
@@ -1216,17 +1219,17 @@ class E2LoRaModule:
             )
             # STATS FOR NS
             self.statistics["ns"]["rx"] = self.statistics["ns"].get("rx", 0) + 1
-            # Check duplicate and update legacy stats
-            with self.legacy_not_duplicates_lock:
-                last_fcnt = self.legacy_not_duplicates.get(dev_addr, -1)
-                if fcnt > last_fcnt:
-                    self.statistics["dm"]["rx_legacy_frames"] = (
-                        self.statistics["dm"].get("rx_legacy_frames", 0) + 1
-                    )
-                    self.legacy_not_duplicates[dev_addr] = last_fcnt
-                    self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
-                else:
-                    self.legacy_dropped = self.legacy_dropped + 1
+            # # Check duplicate and update legacy stats
+            # with self.legacy_not_duplicates_lock:
+            #     last_fcnt = self.legacy_not_duplicates.get(dev_addr, -1)
+            #     if fcnt > last_fcnt:
+            #         self.statistics["dm"]["rx_legacy_frames"] = (
+            #             self.statistics["dm"].get("rx_legacy_frames", 0) + 1
+            #         )
+            #         self.legacy_not_duplicates[dev_addr] = last_fcnt
+            #         self.statistics["ns"]["tx"] = self.statistics["ns"].get("tx", 0) + 1
+            #     else:
+            #         self.legacy_dropped = self.legacy_dropped + 1
         else:
             log.warning("Unknown frame type")
 
@@ -1288,6 +1291,44 @@ class E2LoRaModule:
             default_window_size,
         )
         return 0
+
+    """
+        @brief  This function handle the gateway frames stats.
+        @param gw_id: The gateway id.
+        @param legacy_frames: The legacy frames counter.
+        @param legacy_fcnts: The legacy frame fcnts.
+        @param edge_frames: The edge frames counter.
+        @param edge_fcnts: The edge frame fcnts.
+        @param edge_not_processed_frames: The edge not processed frames counter.
+        @param edge_not_processed_fcnts: The edge not processed frame fcnts.
+        @return 0 is success, -1 if failure.
+    """
+
+    def handle_gw_frames_stats(
+        self,
+        gw_id,
+        legacy_frames,
+        legacy_fcnts,
+        edge_frames,
+        edge_fcnts,
+        edge_not_processed_frames,
+        edge_not_processed_fcnts,
+    ):
+        if self.collection is None:
+            return -1
+        gw_frames_stats = {
+            "_id": self._get_now_isostring(),
+            "gw_id": gw_id,
+            "legacy_frames": legacy_frames,
+            "legacy_fcnts": legacy_fcnts,
+            "edge_frames": edge_frames,
+            "edge_fcnts": edge_fcnts,
+            "edge_not_processed_frames": edge_not_processed_frames,
+            "edge_not_processed_fcnts": edge_not_processed_fcnts,
+            "type": GW_FRAMES_STATS_DOC_TYPE,
+        }
+        log.debug("Pushing frames stats in DB")
+        self.collection.insert_one(gw_frames_stats)
 
     """
         @brief  This function set the mqtt client object.

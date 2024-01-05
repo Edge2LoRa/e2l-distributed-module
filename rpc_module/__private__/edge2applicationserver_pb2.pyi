@@ -1,7 +1,7 @@
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Iterable as _Iterable, Optional as _Optional
+from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -70,3 +70,29 @@ class SysLog(_message.Message):
     data_received: int
     data_transmitted: int
     def __init__(self, gw_id: _Optional[str] = ..., memory_usage: _Optional[int] = ..., memory_available: _Optional[int] = ..., cpu_usage: _Optional[float] = ..., data_received: _Optional[int] = ..., data_transmitted: _Optional[int] = ...) -> None: ...
+
+class GwFrameStats(_message.Message):
+    __slots__ = ["gw_id", "legacy_frames", "legacy_fcnts", "edge_frames", "edge_fcnts", "edge_not_processed_frames", "edge_not_processed_fcnts"]
+    GW_ID_FIELD_NUMBER: _ClassVar[int]
+    LEGACY_FRAMES_FIELD_NUMBER: _ClassVar[int]
+    LEGACY_FCNTS_FIELD_NUMBER: _ClassVar[int]
+    EDGE_FRAMES_FIELD_NUMBER: _ClassVar[int]
+    EDGE_FCNTS_FIELD_NUMBER: _ClassVar[int]
+    EDGE_NOT_PROCESSED_FRAMES_FIELD_NUMBER: _ClassVar[int]
+    EDGE_NOT_PROCESSED_FCNTS_FIELD_NUMBER: _ClassVar[int]
+    gw_id: str
+    legacy_frames: int
+    legacy_fcnts: _containers.RepeatedCompositeFieldContainer[FcntStruct]
+    edge_frames: int
+    edge_fcnts: _containers.RepeatedCompositeFieldContainer[FcntStruct]
+    edge_not_processed_frames: int
+    edge_not_processed_fcnts: _containers.RepeatedCompositeFieldContainer[FcntStruct]
+    def __init__(self, gw_id: _Optional[str] = ..., legacy_frames: _Optional[int] = ..., legacy_fcnts: _Optional[_Iterable[_Union[FcntStruct, _Mapping]]] = ..., edge_frames: _Optional[int] = ..., edge_fcnts: _Optional[_Iterable[_Union[FcntStruct, _Mapping]]] = ..., edge_not_processed_frames: _Optional[int] = ..., edge_not_processed_fcnts: _Optional[_Iterable[_Union[FcntStruct, _Mapping]]] = ...) -> None: ...
+
+class FcntStruct(_message.Message):
+    __slots__ = ["dev_addr", "fcnt"]
+    DEV_ADDR_FIELD_NUMBER: _ClassVar[int]
+    FCNT_FIELD_NUMBER: _ClassVar[int]
+    dev_addr: str
+    fcnt: int
+    def __init__(self, dev_addr: _Optional[str] = ..., fcnt: _Optional[int] = ...) -> None: ...
