@@ -289,7 +289,6 @@ class E2LoRaModule:
             gw_1_info = self.statistics["gateways"][self.e2gw_ids[0]]
         if len(self.e2gw_ids) > 1:
             gw_2_info = self.statistics["gateways"][self.e2gw_ids[1]]
-        print(gw_1_info)
         ns_info = self.statistics.get("ns", {})
         dm_info = self.statistics.get("dm", {})
         new_stats_data = {
