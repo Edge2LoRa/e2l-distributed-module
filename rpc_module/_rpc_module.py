@@ -5,13 +5,6 @@ import math
 from rpc_module.__private__ import edge2applicationserver_pb2_grpc
 from rpc_module.__private__.edge2applicationserver_pb2 import ResponseMessage
 
-DEBUG = os.getenv("DEBUG", False)
-DEBUG = True if DEBUG == "1" else False
-if DEBUG:
-    logging.basicConfig(level=logging.DEBUG)
-else:
-    logging.basicConfig(level=logging.INFO)
-
 log = logging.getLogger(__name__)
 
 

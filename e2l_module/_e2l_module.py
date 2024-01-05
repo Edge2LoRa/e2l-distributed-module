@@ -26,13 +26,6 @@ from threading import Thread, Lock
 from pymongo import MongoClient
 from datetime import datetime
 
-DEBUG = os.getenv("DEBUG", False)
-DEBUG = True if DEBUG == "1" else False
-if DEBUG:
-    logging.basicConfig(level=logging.DEBUG)
-else:
-    logging.basicConfig(level=logging.INFO)
-
 log = logging.getLogger(__name__)
 
 ### LORAWAN PORTS
