@@ -258,7 +258,7 @@ class E2LoRaModule:
     """
 
     def _push_log_to_db(
-        self, module_id, dev_addr, log_message, frame_type, fcnt, timetag
+        self, module_id, dev_addr, log_message, frame_type, fcnt, timetag, gw_id=None
     ):
         if self.collection is None:
             return -1
@@ -274,6 +274,8 @@ class E2LoRaModule:
             "timetag_gw": timetag,
             "timetag_dm": timetag_dm,
         }
+        if gw_id is not None:
+            log_obj["gw_id"] = gw_id
         self.collection.insert_one(log_obj)
         return 0
 
@@ -1064,6 +1066,7 @@ class E2LoRaModule:
         self._push_log_to_db(
             module_id="DM",
             dev_addr=dev_addr,
+            gw_id=gw_id,
             log_message=f"Received Aggregate Frame from {dev_addr}",
             frame_type=EDGE_FRAME_AGGREGATE,
             fcnt=fcnts,
