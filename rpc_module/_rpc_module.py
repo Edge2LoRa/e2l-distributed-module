@@ -89,11 +89,30 @@ class Edge2LoRaApplicationServer(
     def gw_frames_stats(self, request, context):
         gw_id = request.gw_id
         legacy_frames = request.legacy_frames
-        legacy_fcnts = list(request.legacy_fcnts)
+        legacy_fcnts_it = list(request.legacy_fcnts)
+        legacy_fcnts = []
+        for elem in legacy_fcnts_it:
+            legacy_fcnts.append({
+                "dev_addr": elem.dev_addr,
+                "fcnt": elem.fcnt
+            })
         edge_frames = request.edge_frames
-        edge_fcnts = list(request.edge_fcnts)
+        edge_fcnts_it = list(request.edge_fcnts)
+        edge_fcnts = []
+        for elem in legacy_fcnts_it:
+            edge_fcnts.append({
+                "dev_addr": elem.dev_addr,
+                "fcnt": elem.fcnt
+            })
         edge_not_processed_frames = request.edge_not_processed_frames
-        edge_not_processed_fcnts = list(request.edge_not_processed_fcnts)
+        edge_not_processed_fcnts_it = list(request.edge_not_processed_fcnts)
+        edge_not_processed_fcnts = []
+        for elem in legacy_fcnts_it:
+            edge_not_processed_fcnts.append({
+                "dev_addr": elem.dev_addr,
+                "fcnt": elem.fcnt
+            })
+
 
         self.e2l_module.handle_gw_frames_stats(
             gw_id=gw_id,

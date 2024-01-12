@@ -243,7 +243,7 @@ class E2LoRaModule:
                 key_agreement_message_log=message,
                 key_agreement_process_time=0,
             )
-            log.info(f"Sending log to dashboard: {type}\t{message}")
+            log.debug(f"Sending log to dashboard: {type}\t{message}")
             response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
 
     """
@@ -564,6 +564,7 @@ class E2LoRaModule:
             stats_obj["_id"] = self._get_now_isostring()
             stats_obj["type"] = STATS_DOC_TYPE
             log.debug("Pushing new stats obj to DB...")
+            print(json.dumps(stats_obj, indent=2))
             self.collection.insert_one(stats_obj)
             log.debug("Stats pushed to DB.")
 
@@ -574,16 +575,15 @@ class E2LoRaModule:
 
     def _update_dashboard(self):
         while True:
-            log.info("Sending statistics to dashboard")
+            log.debug("Sending statistics to dashboard")
             response = self.dashboard_rpc_stub.ClientStreamingMethodStatistics(
                 self._get_stats()
             )
-            log.info(f"Received commands from dashboard:\n{response}")
+            log.debug(f"Received commands from dashboard:\n{response}")
             ed_1_gw_selection = response.ed_1_gw_selection
             ed_2_gw_selection = response.ed_2_gw_selection
             ed_3_gw_selection = response.ed_3_gw_selection
             aggregation_function_str = response.process_function
-            # log.info(f"Aggregation function: {aggregation_function_str}\n\n\n\n")
             aggregation_function = AVG_ID
             if aggregation_function_str == "mean":
                 aggregation_function = AVG_ID
@@ -1017,7 +1017,7 @@ class E2LoRaModule:
     ):
         # decode frame_payload_base64
         frame_payload = base64.b64decode(frame_payload_base64).decode("utf-8")
-        log.info(
+        log.debug(
             f"Received Legacy Frame from Legacy Route. Data: {frame_payload}. Dev: {dev_addr}."
         )
         # COMMENT OUT FOR BETTER STATS. TTS MQTT BROKER QoS 0
@@ -1060,7 +1060,7 @@ class E2LoRaModule:
         timetag,
         gw_log_message=None,
     ):
-        log.info(
+        log.debug(
             f"Received Edge Frame from E2ED. Data: {aggregated_data}. Dev Addr: {dev_addr}. E2GW: {gw_id}."
         )
         self._push_log_to_db(
