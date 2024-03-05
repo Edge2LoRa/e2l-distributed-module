@@ -61,6 +61,9 @@ LOG_V2_DOC_TYPE = "logs_v2"
 SYS_DOC_TYPE = "sys"
 GW_FRAMES_STATS_DOC_TYPE = "gw_stats"
 
+# DASHBOARD CONNECT TIMEOUT
+DASHBOARD_TIMEOUT_SEC = 5
+
 
 class E2LoRaModule:
     """
@@ -118,8 +121,10 @@ class E2LoRaModule:
         else:
             try:
                 channel = grpc.insecure_channel(dashboard_rpc_endpoint)
+                grpc.channel_ready_future(channel).result(timeout=DASHBOARD_TIMEOUT_SEC)
                 self.dashboard_rpc_stub = demo_pb2_grpc.GRPCDemoStub(channel)
             except:
+                log.info("DASHBOARD RPC ENDPOINT NOT AVAILABLE.")
                 self.dashboard_rpc_stub = None
         # MQTT CLIENT
         self.mqtt_client = None
@@ -225,7 +230,7 @@ class E2LoRaModule:
     """
 
     def _send_log(self, type, message):
-        if self.dashboard_rpc_stub is None:
+        if self.collection is not None:
             log_obj = {
                 "_id": self._get_now_isostring(),
                 "type": LOG_DOC_TYPE,
@@ -235,7 +240,7 @@ class E2LoRaModule:
             }
             self.collection.insert_one(log_obj)
             return
-        else:
+        elif self.dashboard_rpc_stub is not None:
             request = SendLogMessage(
                 client_id=1,
                 message_data="",
@@ -245,6 +250,8 @@ class E2LoRaModule:
             )
             log.debug(f"Sending log to dashboard: {type}\t{message}")
             response = self.dashboard_rpc_stub.SimpleMethodsLogMessage(request)
+        else:
+            pass
 
     """
         @brief this function push a log document in the MongoDB collection
@@ -979,15 +986,16 @@ class E2LoRaModule:
             )
 
         # UPDATE DASHBOARD NETWORK TOPOLOGY
-        join_update_message = SendJoinUpdateMessage(
-            client_id=1,
-            message_data="",
-            ed_id=self.e2ed_ids.index(dev_eui) + 1,
-            gw_id=self.e2gw_ids.index(e2gw.get("gw_rpc_endpoint_address")) + 1,
-        )
-        ret = self.dashboard_rpc_stub.SimpleMethodsJoinUpdateMessage(
-            join_update_message
-        )
+        if self.dashboard_rpc_stub is not None:
+            join_update_message = SendJoinUpdateMessage(
+                client_id=1,
+                message_data="",
+                ed_id=self.e2ed_ids.index(dev_eui) + 1,
+                gw_id=self.e2gw_ids.index(e2gw.get("gw_rpc_endpoint_address")) + 1,
+            )
+            ret = self.dashboard_rpc_stub.SimpleMethodsJoinUpdateMessage(
+                join_update_message
+            )
 
         return 0
 
@@ -1115,13 +1123,15 @@ class E2LoRaModule:
     """
 
     def start_dashboard_update_loop(self):
-        if self.dashboard_rpc_stub is None:
+        if self.collection is not None:
             self.db_update_loop = Thread(target=self._update_db)
             self.db_update_loop.start()
             return
-        else:
+        elif self.dashboard_rpc_stub is not None:
             self.dashboard_update_loop = Thread(target=self._update_dashboard)
             self.dashboard_update_loop.start()
+        else:
+            pass
 
     """
         @brief  This function start a thread to monitor the DM resources.
