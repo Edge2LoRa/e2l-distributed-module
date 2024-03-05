@@ -1,8 +1,15 @@
+from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Optional as _Optional
+from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class ActiveFlag(_message.Message):
+    __slots__ = ["is_active"]
+    IS_ACTIVE_FIELD_NUMBER: _ClassVar[int]
+    is_active: bool
+    def __init__(self, is_active: bool = ...) -> None: ...
 
 class EdPubInfo(_message.Message):
     __slots__ = ["dev_eui", "dev_addr", "g_as_ed", "dev_public_key"]
@@ -47,6 +54,24 @@ class E2LDeviceInfo(_message.Message):
     dev_eui: str
     dev_addr: str
     def __init__(self, dev_eui: _Optional[str] = ..., dev_addr: _Optional[str] = ...) -> None: ...
+
+class Device(_message.Message):
+    __slots__ = ["dev_eui", "dev_addr", "edge_s_enc_key", "edge_s_int_key"]
+    DEV_EUI_FIELD_NUMBER: _ClassVar[int]
+    DEV_ADDR_FIELD_NUMBER: _ClassVar[int]
+    EDGE_S_ENC_KEY_FIELD_NUMBER: _ClassVar[int]
+    EDGE_S_INT_KEY_FIELD_NUMBER: _ClassVar[int]
+    dev_eui: str
+    dev_addr: str
+    edge_s_enc_key: bytes
+    edge_s_int_key: bytes
+    def __init__(self, dev_eui: _Optional[str] = ..., dev_addr: _Optional[str] = ..., edge_s_enc_key: _Optional[bytes] = ..., edge_s_int_key: _Optional[bytes] = ...) -> None: ...
+
+class E2LDevicesInfoComplete(_message.Message):
+    __slots__ = ["device_list"]
+    DEVICE_LIST_FIELD_NUMBER: _ClassVar[int]
+    device_list: _containers.RepeatedCompositeFieldContainer[Device]
+    def __init__(self, device_list: _Optional[_Iterable[_Union[Device, _Mapping]]] = ...) -> None: ...
 
 class E2LData(_message.Message):
     __slots__ = ["status_code", "dev_eui", "dev_addr", "aggregated_data", "aggregated_data_num", "timetag"]

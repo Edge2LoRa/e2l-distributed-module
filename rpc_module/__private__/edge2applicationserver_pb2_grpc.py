@@ -15,20 +15,30 @@ class Edge2ApplicationServerStub(object):
             channel: A grpc.Channel.
         """
         self.new_data = channel.unary_unary(
-                '/edge2applicationserver.Edge2ApplicationServer/new_data',
-                request_serializer=edge2applicationserver__pb2.EdgeData.SerializeToString,
-                response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
-                )
+            "/edge2applicationserver.Edge2ApplicationServer/new_data",
+            request_serializer=edge2applicationserver__pb2.EdgeData.SerializeToString,
+            response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
+        )
         self.store_e2gw_pub_info = channel.unary_unary(
-                '/edge2applicationserver.Edge2ApplicationServer/store_e2gw_pub_info',
-                request_serializer=edge2applicationserver__pb2.E2GWPubInfo.SerializeToString,
-                response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
-                )
+            "/edge2applicationserver.Edge2ApplicationServer/store_e2gw_pub_info",
+            request_serializer=edge2applicationserver__pb2.E2GWPubInfo.SerializeToString,
+            response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
+        )
         self.gw_log = channel.unary_unary(
-                '/edge2applicationserver.Edge2ApplicationServer/gw_log',
-                request_serializer=edge2applicationserver__pb2.GWLog.SerializeToString,
-                response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
-                )
+            "/edge2applicationserver.Edge2ApplicationServer/gw_log",
+            request_serializer=edge2applicationserver__pb2.GwLog.SerializeToString,
+            response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
+        )
+        self.sys_log = channel.unary_unary(
+            "/edge2applicationserver.Edge2ApplicationServer/sys_log",
+            request_serializer=edge2applicationserver__pb2.SysLog.SerializeToString,
+            response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
+        )
+        self.gw_frames_stats = channel.unary_unary(
+            "/edge2applicationserver.Edge2ApplicationServer/gw_frames_stats",
+            request_serializer=edge2applicationserver__pb2.GwFrameStats.SerializeToString,
+            response_deserializer=edge2applicationserver__pb2.ResponseMessage.FromString,
+        )
 
 
 class Edge2ApplicationServerServicer(object):
@@ -37,96 +47,213 @@ class Edge2ApplicationServerServicer(object):
     def new_data(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
     def store_e2gw_pub_info(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
     def gw_log(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+
+    def sys_log(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+
+    def gw_frames_stats(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
 
 def add_Edge2ApplicationServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'new_data': grpc.unary_unary_rpc_method_handler(
-                    servicer.new_data,
-                    request_deserializer=edge2applicationserver__pb2.EdgeData.FromString,
-                    response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
-            ),
-            'store_e2gw_pub_info': grpc.unary_unary_rpc_method_handler(
-                    servicer.store_e2gw_pub_info,
-                    request_deserializer=edge2applicationserver__pb2.E2GWPubInfo.FromString,
-                    response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
-            ),
-            'gw_log': grpc.unary_unary_rpc_method_handler(
-                    servicer.gw_log,
-                    request_deserializer=edge2applicationserver__pb2.GWLog.FromString,
-                    response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
-            ),
+        "new_data": grpc.unary_unary_rpc_method_handler(
+            servicer.new_data,
+            request_deserializer=edge2applicationserver__pb2.EdgeData.FromString,
+            response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
+        ),
+        "store_e2gw_pub_info": grpc.unary_unary_rpc_method_handler(
+            servicer.store_e2gw_pub_info,
+            request_deserializer=edge2applicationserver__pb2.E2GWPubInfo.FromString,
+            response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
+        ),
+        "gw_log": grpc.unary_unary_rpc_method_handler(
+            servicer.gw_log,
+            request_deserializer=edge2applicationserver__pb2.GwLog.FromString,
+            response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
+        ),
+        "sys_log": grpc.unary_unary_rpc_method_handler(
+            servicer.sys_log,
+            request_deserializer=edge2applicationserver__pb2.SysLog.FromString,
+            response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
+        ),
+        "gw_frames_stats": grpc.unary_unary_rpc_method_handler(
+            servicer.gw_frames_stats,
+            request_deserializer=edge2applicationserver__pb2.GwFrameStats.FromString,
+            response_serializer=edge2applicationserver__pb2.ResponseMessage.SerializeToString,
+        ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'edge2applicationserver.Edge2ApplicationServer', rpc_method_handlers)
+        "edge2applicationserver.Edge2ApplicationServer", rpc_method_handlers
+    )
     server.add_generic_rpc_handlers((generic_handler,))
 
 
- # This class is part of an EXPERIMENTAL API.
+# This class is part of an EXPERIMENTAL API.
 class Edge2ApplicationServer(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def new_data(request,
+    def new_data(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/edge2applicationserver.Edge2ApplicationServer/new_data',
+            "/edge2applicationserver.Edge2ApplicationServer/new_data",
             edge2applicationserver__pb2.EdgeData.SerializeToString,
             edge2applicationserver__pb2.ResponseMessage.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
 
     @staticmethod
-    def store_e2gw_pub_info(request,
+    def store_e2gw_pub_info(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/edge2applicationserver.Edge2ApplicationServer/store_e2gw_pub_info',
+            "/edge2applicationserver.Edge2ApplicationServer/store_e2gw_pub_info",
             edge2applicationserver__pb2.E2GWPubInfo.SerializeToString,
             edge2applicationserver__pb2.ResponseMessage.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
 
     @staticmethod
-    def gw_log(request,
+    def gw_log(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/edge2applicationserver.Edge2ApplicationServer/gw_log',
-            edge2applicationserver__pb2.GWLog.SerializeToString,
+            "/edge2applicationserver.Edge2ApplicationServer/gw_log",
+            edge2applicationserver__pb2.GwLog.SerializeToString,
             edge2applicationserver__pb2.ResponseMessage.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
+
+    @staticmethod
+    def sys_log(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            "/edge2applicationserver.Edge2ApplicationServer/sys_log",
+            edge2applicationserver__pb2.SysLog.SerializeToString,
+            edge2applicationserver__pb2.ResponseMessage.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
+
+    @staticmethod
+    def gw_frames_stats(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            "/edge2applicationserver.Edge2ApplicationServer/gw_frames_stats",
+            edge2applicationserver__pb2.GwFrameStats.SerializeToString,
+            edge2applicationserver__pb2.ResponseMessage.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
