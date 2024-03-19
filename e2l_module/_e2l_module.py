@@ -135,8 +135,8 @@ class E2LoRaModule:
         self.ed_2_gw_selection = None
         self.ed_3_gw_selection = None
         # Load Device JSON
-        if self.collection is not None:
-            self._load_device_json()
+        # if self.collection is not None:
+        self._load_device_json()
         gw_shut_enabled = os.getenv("GW_SHUT", "0")
         self.gw_shut_enabled = True if gw_shut_enabled == "1" else False
         if self.gw_shut_enabled:
@@ -729,6 +729,7 @@ class E2LoRaModule:
     def handle_gw_pub_info(
         self, gw_rpc_endpoint_address, gw_rpc_endpoint_port, gw_pub_key_compressed
     ):
+        log.debug("############################## KJHAKSHKSHKJSHAJKSHAKSHAJKH")
         # Retireve Info
         gw_pub_key = ECC.import_key(gw_pub_key_compressed, curve_name="P-256")
         g_as_gw_point = gw_pub_key.pointQ * self.ephimeral_private_key.d
@@ -774,8 +775,8 @@ class E2LoRaModule:
         if log_type is not None:
             self._send_log(type=log_type, message=log_message)
 
-        if self.collection is None:
-            return 0
+        # if self.collection is None:
+        #     return 0
 
         # Check the preloaded devices
         total_devices = len(self.e2ed_ids)
@@ -788,6 +789,7 @@ class E2LoRaModule:
                 and (
                     (index == 0 and dev_index % 4 < 2)
                     or (index == 1 and dev_index % 4 >= 2)
+                    or len(self.e2ed_ids) < 10
                 )
             ):
                 self.active_directory["e2eds"][dev_eui][
@@ -1269,8 +1271,6 @@ class E2LoRaModule:
         data_received,
         data_transmitted,
     ):
-        if self.collection is None or gw_id not in self.e2gw_ids:
-            return -1
         gw_sys_stats = {
             "_id": self._get_now_isostring(),
             "gw_id": gw_id,
@@ -1281,8 +1281,9 @@ class E2LoRaModule:
             "data_transmitted": data_transmitted,
             "type": SYS_DOC_TYPE,
         }
-        log.debug("Pushing sys stats in DB")
-        self.collection.insert_one(gw_sys_stats)
+        if self.collection is not None and gw_id in self.e2gw_ids:
+            log.debug("Pushing sys stats in DB")
+            self.collection.insert_one(gw_sys_stats)
         default_window_size = os.getenv("DEFAULT_AGGR_WINDOWS_SIZE")
         if default_window_size is None or not default_window_size.isnumeric():
             default_window_size = 10
